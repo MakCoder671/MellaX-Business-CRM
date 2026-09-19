@@ -2,6 +2,17 @@ from django.urls import path
 
 from . import views
 
+# ----------------------------------------------------------------------------
+# This maps URL paths to the view classes in views.py. It gets "mounted"
+# under /api/accounts/ in mellax/urls.py, so e.g. the "signup" path below
+# actually becomes /api/accounts/signup/ from the outside.
+#
+# <str:uidb64>/<str:token> in a path means "grab whatever text is here and
+# pass it into the view function as a `uidb64` / `token` argument" — that's
+# how the emailed verify/reset links end up calling VerifyEmailView.post(
+# self, request, uidb64, token).
+# ----------------------------------------------------------------------------
+
 urlpatterns = [
     path("signup/", views.SignupView.as_view(), name="signup"),
     path(

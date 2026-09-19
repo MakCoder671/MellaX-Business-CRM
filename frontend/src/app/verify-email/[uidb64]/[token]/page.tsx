@@ -6,6 +6,12 @@ import { use, useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Card } from "@/components/form";
 
+// Same idea as the reset-password page — this is where the "verify your
+// email" link from the signup email actually lands. Unlike reset
+// password though, there's no form to fill out: the moment this page
+// loads, it immediately fires the verify request using the uid/token
+// already in the URL (see the useEffect below).
+
 export default function VerifyEmailPage({
   params,
 }: PageProps<"/verify-email/[uidb64]/[token]">) {
@@ -14,6 +20,9 @@ export default function VerifyEmailPage({
   const [message, setMessage] = useState("Verifying your email…");
 
   useEffect(() => {
+    // Fires automatically as soon as the page mounts — no button click
+    // needed, since just landing on this URL (by clicking the emailed
+    // link) IS the action being confirmed.
     apiFetch<{ detail: string }>(`/api/accounts/verify-email/${uidb64}/${token}/`, {
       method: "POST",
       auth: false,

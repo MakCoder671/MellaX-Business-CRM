@@ -5,10 +5,13 @@ import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// Same list-form-delete pattern as the Clients page — see that file's
+// comments for the full walkthrough of how it works.
+
 type Service = {
   id: number;
   name: string;
-  price: string;
+  price: string; // comes back as a string from Django's DecimalField, not a number — that's normal, keeps money math precise
   description: string;
   is_taxable: boolean;
 };

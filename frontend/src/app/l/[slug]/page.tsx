@@ -4,6 +4,16 @@ import { use, useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 
+// ----------------------------------------------------------------------------
+// This is the ONLY page in the whole frontend that a random stranger
+// (not logged in) is meant to visit — every business's public landing
+// page lives at /l/<their-slug>. It hits the backend's public,
+// unauthenticated endpoint (landingpages/views.py's PublicLandingPageView)
+// — notice `auth: false` below, since there's no logged-in user here at all.
+// ----------------------------------------------------------------------------
+
+// Matches exactly what the backend's PublicLandingPageSerializer sends
+// back — see landingpages/serializers.py for the Django side of this shape.
 type PublicLandingPage = {
   slug: string;
   business_name: string;
@@ -50,6 +60,11 @@ export default function PublicLandingPage({ params }: PageProps<"/l/[slug]">) {
       {page.photos.length > 0 && (
         <div className="mt-6 grid grid-cols-3 gap-2">
           {page.photos.map((photo) => (
+            // A plain <img> instead of Next.js's <Image> component here —
+            // these come straight from the Django backend (a different
+            // origin than the frontend), and Next's <Image> needs extra
+            // config to optimize images from external domains. Not worth
+            // the setup yet for a v1 gallery.
             // eslint-disable-next-line @next/next/no-img-element
             <img key={photo.id} src={photo.image} alt="" className="aspect-square rounded-md object-cover" />
           ))}

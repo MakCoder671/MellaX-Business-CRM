@@ -6,6 +6,15 @@ import { useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// ----------------------------------------------------------------------------
+// The signup form — steps 1, 2, and 4 of the plan doc's Sign-Up &
+// Onboarding Flow all happen right here on one page (create account +
+// accept terms + choose plan). Step 3 (email verification) and beyond
+// happen on separate pages after this one submits successfully.
+// ----------------------------------------------------------------------------
+
+// Plan options shown as cards. Kept as plain data (not hardcoded JSX)
+// so adding a plan later is just adding an entry to this array.
 const PLANS = [
   {
     id: "basic" as const,
@@ -22,23 +31,27 @@ const PLANS = [
 ];
 
 export default function SignupPage() {
+  // Every form field gets its own bit of state — this is the standard
+  // "controlled input" pattern in React: the <input>'s value always
+  // comes FROM this state, and onChange updates the state, so React is
+  // always the source of truth for what's in the box.
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [acceptTos, setAcceptTos] = useState(false);
   const [plan, setPlan] = useState<"basic" | "plus">("basic");
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false); // disables the button + shows "Creating account…" while the request is in flight
+  const [done, setDone] = useState(false); // flips to true after a successful signup, to show the "check your email" screen
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+    e.preventDefault(); // stop the browser from doing a full page reload on form submit — we handle it with JS instead
     setError(null);
     setSubmitting(true);
     try {
       await apiFetch("/api/accounts/signup/", {
         method: "POST",
-        auth: false,
+        auth: false, // no token exists yet — we're creating the account that WILL get one
         body: {
           business_name: businessName,
           email,
@@ -49,12 +62,18 @@ export default function SignupPage() {
       });
       setDone(true);
     } catch (err) {
+      // ApiError (see lib/api.ts) already has a nice human-readable
+      // message; anything else (like a network failure) gets a generic
+      // fallback instead of showing something scary/technical.
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }
   }
 
+  // After a successful signup, show a "check your email" message instead
+  // of the form — swapping the whole page content based on `done` is
+  // simpler here than routing to a whole separate page for one message.
   if (done) {
     return (
       <main className="mx-auto flex max-w-md flex-1 flex-col items-center justify-center px-4 text-center">
@@ -104,9 +123,12 @@ export default function SignupPage() {
           <div>
             <p className="text-sm font-medium text-gray-700">Choose your plan</p>
             <div className="mt-2 grid grid-cols-2 gap-3">
+              {/* Two clickable cards instead of a dropdown/radio buttons —
+                  makes the price/description visible at a glance instead
+                  of hidden behind a click. */}
               {PLANS.map((p) => (
                 <button
-                  type="button"
+                  type="button" // "button" (not "submit") so clicking a plan card doesn't accidentally submit the whole form
                   key={p.id}
                   onClick={() => setPlan(p.id)}
                   className={`rounded-md border p-3 text-left text-sm transition-colors ${

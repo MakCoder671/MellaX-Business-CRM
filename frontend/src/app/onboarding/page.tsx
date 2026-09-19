@@ -8,8 +8,19 @@ import { useAuth } from "@/lib/auth-context";
 import { Protected } from "@/components/protected";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// ----------------------------------------------------------------------------
+// The onboarding wizard from the plan doc: business info -> first
+// service -> first client -> landing page appears. Each step is its own
+// small component below, and OnboardingPage at the bottom just tracks
+// "which step are we on" and swaps between them. Each step component
+// takes an `onDone` callback — when a step finishes successfully, it
+// calls onDone() to advance to the next one.
+// ----------------------------------------------------------------------------
+
 const STEPS = ["Business info", "First service", "First client", "Your landing page"] as const;
 
+// The little progress bar at the top ("Business info -- First service --
+// ...") that highlights which steps are done/current.
 function StepHeader({ step }: { step: number }) {
   return (
     <ol className="mb-6 flex gap-2 text-xs font-medium text-gray-400">
@@ -25,8 +36,9 @@ function StepHeader({ step }: { step: number }) {
   );
 }
 
+// --- Step 1: Business info ---
 function BusinessInfoStep({ onDone }: { onDone: () => void }) {
-  const { refreshAccount } = useAuth();
+  const { refreshAccount } = useAuth(); // after saving, re-fetch the account so the rest of the app sees the updated phone/address right away
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +49,8 @@ function BusinessInfoStep({ onDone }: { onDone: () => void }) {
     setError(null);
     setSubmitting(true);
     try {
+      // PATCH = "update just these fields" (as opposed to PUT, which
+      // would expect the whole object) — see accounts/views.py's MeView.
       await apiFetch("/api/accounts/me/", { method: "PATCH", body: { phone, address } });
       await refreshAccount();
       onDone();
@@ -59,6 +73,7 @@ function BusinessInfoStep({ onDone }: { onDone: () => void }) {
   );
 }
 
+// --- Step 2: First service ---
 function FirstServiceStep({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -105,6 +120,7 @@ function FirstServiceStep({ onDone }: { onDone: () => void }) {
   );
 }
 
+// --- Step 3: First client ---
 function FirstClientStep({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -143,12 +159,16 @@ function FirstClientStep({ onDone }: { onDone: () => void }) {
   );
 }
 
+// --- Step 4: Landing page reveal (the last step — no onDone, just a "go to dashboard" button) ---
 function LandingPageStep() {
   const { account } = useAuth();
   const router = useRouter();
   const [slug, setSlug] = useState<string | null>(null);
 
   useEffect(() => {
+    // The backend auto-creates a landing page the first time it's asked
+    // for (see landingpages/views.py's MyLandingPageView) — so just
+    // fetching it here is enough to make sure one exists.
     apiFetch<{ slug: string }>("/api/landing-pages/me/").then((lp) => setSlug(lp.slug));
   }, []);
 
@@ -173,6 +193,7 @@ function LandingPageStep() {
   );
 }
 
+// --- The wizard itself: just tracks which step number we're on ---
 export default function OnboardingPage() {
   const [step, setStep] = useState(0);
 
@@ -182,6 +203,8 @@ export default function OnboardingPage() {
         <h1 className="text-2xl font-semibold">Let&apos;s set up your business</h1>
         <Card className="mt-6 p-6">
           <StepHeader step={step} />
+          {/* Only ever render the ONE step component matching the
+              current step number — the others aren't in the DOM at all. */}
           {step === 0 && <BusinessInfoStep onDone={() => setStep(1)} />}
           {step === 1 && <FirstServiceStep onDone={() => setStep(2)} />}
           {step === 2 && <FirstClientStep onDone={() => setStep(3)} />}

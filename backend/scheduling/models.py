@@ -2,6 +2,16 @@ from django.db import models
 
 from common.models import TenantScopedModel
 
+# ----------------------------------------------------------------------------
+# Calendar stuff. Three models:
+#   Calendar       -- a "bucket" of appointments (v1 = just one per
+#                      business; multiple staff/room calendars is a Plus
+#                      feature for later)
+#   Appointment    -- one booked slot on a calendar, tied to a client
+#   BusinessHours  -- what days/hours the business is open, one row per
+#                      day of the week
+# ----------------------------------------------------------------------------
+
 
 class Calendar(TenantScopedModel):
     TYPE_OWNER = "owner"
@@ -15,15 +25,15 @@ class Calendar(TenantScopedModel):
 
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, default=TYPE_OWNER)
-    display_order = models.PositiveIntegerField(default=0)
+    display_order = models.PositiveIntegerField(default=0)  # controls what order calendars show up in when a business has more than one (Plus feature)
 
     def __str__(self):
         return self.name
 
 
 class Appointment(TenantScopedModel):
-    SOURCE_MANUAL = "manual"
-    SOURCE_LANDING_PAGE = "landing_page_booking"
+    SOURCE_MANUAL = "manual"  # the business owner typed it in themselves
+    SOURCE_LANDING_PAGE = "landing_page_booking"  # a client booked it themselves through the public landing page (Plus feature)
     SOURCE_CHOICES = [
         (SOURCE_MANUAL, "Manual"),
         (SOURCE_LANDING_PAGE, "Landing page booking"),
@@ -45,7 +55,15 @@ class Appointment(TenantScopedModel):
 
 
 class BusinessHours(models.Model):
-    MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY = range(7)
+    """
+    One row per day of the week (always exactly 7 rows per account — see
+    scheduling/views.py's BusinessHoursView for how those 7 rows get
+    created automatically). This drives the calendar's default view:
+    hours outside these get shown as "Off" instead of being a separate
+    thing a business has to configure twice.
+    """
+
+    MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY = range(7)  # just a readable way to write 0,1,2,3,4,5,6
     DAY_CHOICES = [
         (MONDAY, "Monday"),
         (TUESDAY, "Tuesday"),
@@ -68,6 +86,7 @@ class BusinessHours(models.Model):
 
     class Meta:
         constraints = [
+            # Stops the same business from ever having two "Monday" rows.
             models.UniqueConstraint(
                 fields=["business_account", "day_of_week"],
                 name="unique_business_hours_per_day",

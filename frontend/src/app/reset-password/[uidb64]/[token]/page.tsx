@@ -6,9 +6,21 @@ import { use, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// ----------------------------------------------------------------------------
+// This page lives at a URL like /reset-password/MQ/abc123-xyz/ — the
+// [uidb64] and [token] folder names (with square brackets) are Next.js's
+// way of saying "these are dynamic parts of the URL, capture them as
+// params." This is exactly the link the backend emails out (see
+// accounts/views.py's ForgotPasswordView) — the account ID and a
+// signed, tamper-proof token are baked right into the URL itself.
+// ----------------------------------------------------------------------------
+
 export default function ResetPasswordPage({
   params,
 }: PageProps<"/reset-password/[uidb64]/[token]">) {
+  // In Next.js 16, `params` arrives as a Promise (not a plain object like
+  // older versions) — `use()` is a React hook that "unwraps" a promise
+  // inside a component, kind of like an inline `await` for JSX.
   const { uidb64, token } = use(params);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +32,9 @@ export default function ResetPasswordPage({
     setError(null);
     setSubmitting(true);
     try {
+      // uidb64 and token both just get forwarded straight into the URL —
+      // the backend does all the actual verifying (see
+      // accounts/views.py's ResetPasswordView).
       await apiFetch(`/api/accounts/reset-password/${uidb64}/${token}/`, {
         method: "POST",
         auth: false,

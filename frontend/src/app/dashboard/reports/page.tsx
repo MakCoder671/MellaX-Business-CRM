@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { Button, Card, Field } from "@/components/form";
 
+// The Profit & Loss report page — lets a business pick a date range and
+// see revenue/refunds/net/tax for that window. All the actual number-
+// crunching happens on the backend (reports/views.py's ProfitLossView);
+// this page just collects the date range and displays what comes back.
+
 type ProfitLoss = {
   start: string;
   end: string;
@@ -14,6 +19,9 @@ type ProfitLoss = {
   tax_collected: number;
 };
 
+// Default the date range to "start of this year through today" — a
+// sensible default for a tax-filing-oriented report, so the page shows
+// something useful the moment it loads instead of an empty form.
 const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 const today = new Date().toISOString().slice(0, 10);
 
@@ -24,10 +32,15 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Run the report once automatically on page load (using the default
+    // date range above), so there's something on screen right away.
     loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // `e?: React.FormEvent` — the `?` makes this optional, since this same
+  // function gets called two ways: from the form's onSubmit (which DOES
+  // pass an event) and from the useEffect above (which doesn't).
   async function loadReport(e?: React.FormEvent) {
     e?.preventDefault();
     setLoading(true);

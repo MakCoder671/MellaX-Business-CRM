@@ -20,6 +20,12 @@ export default function ForgotPasswordPage() {
         body: { email },
       });
     } finally {
+      // Notice there's no `catch` here — we intentionally show the SAME
+      // "check your email" message no matter what happens. The backend
+      // deliberately never reveals whether an email is actually
+      // registered (see accounts/views.py's ForgotPasswordView) to avoid
+      // leaking who has an account, so there's nothing useful to show an
+      // error for here either.
       setSubmitting(false);
       setDone(true);
     }

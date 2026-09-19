@@ -6,17 +6,28 @@ import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText } from "@/components/form";
 
+// ----------------------------------------------------------------------------
+// The most involved page in the app — creating an invoice with a
+// variable number of line items (one row per service being billed).
+// The tricky bit is `lineItems`: an ARRAY of draft rows that grows/shrinks
+// as the user clicks "add another line item" / "remove."
+// ----------------------------------------------------------------------------
+
 type Client = { id: number; name: string };
 type Service = { id: number; name: string; price: string };
 type Invoice = {
   id: number;
   invoice_number: string;
-  client: number;
+  client: number; // just the client's ID here — the full Client object lives in the `clients` list below, looked up by ID when needed
   status: "unpaid" | "paid" | "refunded";
   issued_date: string;
   tax_amount: string;
 };
 
+// One row of the "add line items" form, before it's been submitted.
+// Quantity/unit_price are kept as strings here because that's what an
+// <input type="number"> actually gives you — converted to real numbers
+// only when needed for display math.
 type LineItemDraft = { service: number | ""; quantity: string; unit_price: string };
 
 export default function InvoicesPage() {
@@ -37,14 +48,22 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     load();
+    // Also grab the full clients & services lists up front — we need
+    // them to populate the dropdowns in the "create invoice" form.
     apiFetch<Client[]>("/api/clients/").then(setClients);
     apiFetch<Service[]>("/api/services/").then(setServices);
   }, []);
 
+  // Since the invoice list from the backend only gives us a client ID
+  // (not the client's name), this looks the name up from the `clients`
+  // list we already fetched — avoids a separate API call per invoice row.
   function clientName(id: number) {
     return clients.find((c) => c.id === id)?.name ?? `#${id}`;
   }
 
+  // Updates ONE line item in the array by index, leaving the others
+  // untouched — the standard "immutable update" pattern in React: never
+  // mutate the array directly, always build a new one.
   function updateLineItem(index: number, patch: Partial<LineItemDraft>) {
     setLineItems((items) => items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
@@ -62,6 +81,9 @@ export default function InvoicesPage() {
     setError(null);
     setSubmitting(true);
     try {
+      // The backend (invoicing/serializers.py) handles auto-numbering
+      // and auto-calculating tax — we only need to send the client and
+      // the raw line items here, nothing else.
       await apiFetch("/api/invoicing/invoices/", {
         method: "POST",
         body: {
@@ -73,6 +95,7 @@ export default function InvoicesPage() {
           })),
         },
       });
+      // Reset the form back to one blank line item, close it, and refresh the list.
       setClientId("");
       setLineItems([{ service: "", quantity: "1", unit_price: "" }]);
       setShowForm(false);
@@ -125,6 +148,9 @@ export default function InvoicesPage() {
 
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-700">Line items</p>
+              {/* One row per draft line item — the `i` index is what
+                  updateLineItem/removeLineItem use to know which row
+                  changed. */}
               {lineItems.map((item, i) => (
                 <div key={i} className="flex items-end gap-2">
                   <label className="flex-1 text-sm">
@@ -135,6 +161,10 @@ export default function InvoicesPage() {
                       onChange={(e) => {
                         const serviceId = Number(e.target.value);
                         const service = services.find((s) => s.id === serviceId);
+                        // Convenience: pre-fill the unit price from the
+                        // service's default price when it's picked, but
+                        // the price stays editable afterward in case this
+                        // particular invoice needs a different amount.
                         updateLineItem(i, {
                           service: serviceId,
                           unit_price: service?.price ?? item.unit_price,
@@ -209,6 +239,9 @@ export default function InvoicesPage() {
       ) : (
         <Card className="divide-y divide-gray-200">
           {invoices.map((invoice) => (
+            // The whole row is a Link to the invoice detail page — that's
+            // where line items, payments, and recording a new payment
+            // actually happen (see the [id] folder next to this file).
             <Link
               key={invoice.id}
               href={`/dashboard/invoices/${invoice.id}`}

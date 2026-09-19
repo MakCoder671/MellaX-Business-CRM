@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/form";
 
+// The marketing splash page at "/" — the very first thing a stranger
+// sees. If they're already logged in (e.g. they had a session from
+// before), we skip the sales pitch and just offer a straight shot to
+// their dashboard instead.
+
 export default function Home() {
   const { account, loading } = useAuth();
 

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// This shape mirrors what clients/serializers.py's ClientSerializer sends.
 type Client = {
   id: number;
   name: string;
@@ -14,19 +15,22 @@ type Client = {
 };
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[] | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [clients, setClients] = useState<Client[] | null>(null); // null = still loading, [] = loaded but genuinely empty
+  const [showForm, setShowForm] = useState(false); // toggles the "add client" form open/closed
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // A plain function (not wrapped in useCallback) that re-fetches the
+  // client list — called once on page load, and again after every
+  // create/delete so the list always reflects the latest data.
   function load() {
     apiFetch<Client[]>("/api/clients/").then(setClients);
   }
 
-  useEffect(load, []);
+  useEffect(load, []); // the empty [] means "run this once, when the page first mounts"
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +38,8 @@ export default function ClientsPage() {
     setSubmitting(true);
     try {
       await apiFetch("/api/clients/", { method: "POST", body: { name, email, phone, notes: "" } });
+      // Reset the form back to empty and hide it, then reload the list to
+      // show the new client.
       setName("");
       setEmail("");
       setPhone("");
@@ -47,6 +53,9 @@ export default function ClientsPage() {
   }
 
   async function handleDelete(client: Client) {
+    // Per the plan doc's "confirmation prompts on destructive actions"
+    // rule — a plain browser confirm() dialog is enough for v1; no
+    // custom modal needed for something this simple.
     if (!confirm(`Delete ${client.name}? This can't be undone.`)) return;
     await apiFetch(`/api/clients/${client.id}/`, { method: "DELETE" });
     load();
