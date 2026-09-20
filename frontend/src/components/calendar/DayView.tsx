@@ -169,19 +169,29 @@ export function DayView({
         className="mt-4 flex overflow-hidden rounded-md border border-gray-300 select-none"
         style={{ height: slots.length * SLOT_HEIGHT_PX }}
       >
-        <div className="relative w-14 shrink-0 border-r border-gray-300 bg-gray-50">
+        <div className="relative w-16 shrink-0 bg-gray-50">
+          {/* Each label sits in its own 30-minute-tall row (flex-centered,
+              not floated text with a translate hack) — that's what keeps
+              every label lined up evenly regardless of whether it wraps.
+              A border-t on every row also gives the gutter its own
+              separator lines, matching the ones in the schedule column
+              next to it exactly, mark for mark. */}
           {slots
             .filter((minutes) => minutes % 30 === 0)
             .map((minutes) => (
-              <span
+              <div
                 key={minutes}
-                className="absolute right-2 -translate-y-1/2 text-[11px] text-gray-500"
-                style={{ top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX }}
+                className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-gray-300 pr-2 text-[11px] font-medium text-gray-500"
+                style={{
+                  top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX,
+                  height: SLOT_HEIGHT_PX * 2,
+                }}
               >
                 {minutesToLabel(minutes)}
-              </span>
+              </div>
             ))}
         </div>
+        <div className="w-px shrink-0 bg-gray-300" />{/* the actual divider between the time gutter and the schedule — a real element, not just a border, so it never gets clipped by rounded corners or antialiasing the way a border sometimes can */}
 
         <div className="relative flex-1">
           {slots.map((minutes) => {
