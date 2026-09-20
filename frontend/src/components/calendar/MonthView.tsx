@@ -146,13 +146,19 @@ export function MonthView({
             {selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
             {isClosedDay(hours, selectedDate) && <span className="ml-2 text-xs text-gray-400">(Closed)</span>}
           </h3>
-          <Button onClick={() => setShowAddForm((v) => !v)}>
-            {showAddForm ? "Cancel" : "Add appointment"}
-          </Button>
+          {/* Per Operating Hours (Settings): a closed day blocks booking
+              through the calendar entirely — same rule as Day and Week. */}
+          {!isClosedDay(hours, selectedDate) && (
+            <Button onClick={() => setShowAddForm((v) => !v)}>
+              {showAddForm ? "Cancel" : "Add appointment"}
+            </Button>
+          )}
         </div>
 
         {selectedDayAppointments.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">Nothing booked this day.</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {isClosedDay(hours, selectedDate) ? "Closed all day — nothing to book." : "Nothing booked this day."}
+          </p>
         ) : (
           <ul className="mt-2 space-y-1">
             {selectedDayAppointments.map((appt) => (

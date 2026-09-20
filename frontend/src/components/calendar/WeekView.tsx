@@ -78,26 +78,32 @@ export function WeekView({
           const businessHour = businessHoursFor(hours, date);
           const isToday = date.toDateString() === today.toDateString();
           const isFormOpen = addFormDay === dayKey;
+          const isOpen = businessHour?.is_open ?? false;
 
           return (
-            <div key={dayKey} className={`p-3 ${isToday ? "bg-emerald-50/40" : ""}`}>
+            <div key={dayKey} className={`p-3 ${isToday ? "bg-emerald-50/40" : ""} ${!isOpen ? "bg-gray-50" : ""}`}>
               <div className="flex items-center justify-between">
                 <div>
                   <span className={`text-sm font-medium ${isToday ? "text-emerald-700" : "text-gray-900"}`}>
                     {date.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}
                   </span>
                   <span className="ml-2 text-xs text-gray-400">
-                    {businessHour?.is_open && businessHour.open_time && businessHour.close_time
+                    {isOpen && businessHour?.open_time && businessHour.close_time
                       ? `${formatHourString(businessHour.open_time)} – ${formatHourString(businessHour.close_time)}`
                       : "Closed"}
                   </span>
                 </div>
-                <button
-                  onClick={() => setAddFormDay(isFormOpen ? null : dayKey)}
-                  className="text-xs text-emerald-700 underline"
-                >
-                  {isFormOpen ? "Cancel" : "+ Add"}
-                </button>
+                {/* Per Operating Hours (Settings): a closed day blocks
+                    booking through the calendar entirely — no quick-add
+                    control shown for it, same rule as DayView. */}
+                {isOpen && (
+                  <button
+                    onClick={() => setAddFormDay(isFormOpen ? null : dayKey)}
+                    className="text-xs text-emerald-700 underline"
+                  >
+                    {isFormOpen ? "Cancel" : "+ Add"}
+                  </button>
+                )}
               </div>
 
               {isFormOpen && (

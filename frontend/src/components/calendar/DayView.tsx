@@ -19,15 +19,16 @@ import type { Appointment, BusinessHour, Client } from "./types";
 // Clicking any empty slot opens the add-appointment form pre-filled
 // with that time — "click the gap you want, book it" is the whole
 // point of drawing this as a grid instead of a list.
+//
+// Operating Hours (Settings) is the source of truth for the grid's
+// range on an open day, AND for whether booking is even allowed at
+// all: a day marked closed there shows no grid and no way to add an
+// appointment through it — "Off" means off, not "a made-up default
+// range you can still book into."
 // ----------------------------------------------------------------------------
 
 const SLOT_MINUTES = 15;
 const SLOT_HEIGHT_PX = 22;
-// Fallback range for a closed day (or one with no hours set at all) —
-// the grid still has to show SOMETHING to click on, so this stands in
-// for "typical business hours" rather than showing a blank card.
-const DEFAULT_START_MINUTES = 8 * 60; // 8:00 AM
-const DEFAULT_END_MINUTES = 18 * 60; // 6:00 PM
 
 function timeToMinutes(hhmmss: string) {
   const [h, m] = hhmmss.split(":").map(Number);
@@ -60,6 +61,40 @@ function ceilTo15(minutes: number) {
   return Math.ceil(minutes / SLOT_MINUTES) * SLOT_MINUTES;
 }
 
+function DayNav({
+  date,
+  setDate,
+}: {
+  date: Date;
+  setDate: React.Dispatch<React.SetStateAction<Date>>;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1))}
+        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+      >
+        ←
+      </button>
+      <h3 className="text-base font-medium">
+        {date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+      </h3>
+      <button
+        onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1))}
+        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+      >
+        →
+      </button>
+      <button
+        onClick={() => setDate(new Date())}
+        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+      >
+        Today
+      </button>
+    </div>
+  );
+}
+
 export function DayView({
   calendarId,
   hours,
@@ -83,14 +118,45 @@ export function DayView({
     return clients.find((c) => c.id === clientId)?.name ?? "Client";
   }
 
-  // The grid's range is business hours by default, but widened to cover
-  // any appointment that falls outside them (e.g. hours changed after
-  // something was booked) — nothing should ever end up clipped off the
-  // visible grid.
-  let rangeStart =
-    businessHour?.is_open && businessHour.open_time ? timeToMinutes(businessHour.open_time) : DEFAULT_START_MINUTES;
-  let rangeEnd =
-    businessHour?.is_open && businessHour.close_time ? timeToMinutes(businessHour.close_time) : DEFAULT_END_MINUTES;
+  // A day Operating Hours marks closed is genuinely off — no grid, no
+  // slot-click booking. Existing appointments (booked before the day
+  // was marked closed, say) still show, just as a plain read-only list
+  // with nothing to click into, rather than hiding real data.
+  if (!businessHour?.is_open) {
+    return (
+      <div>
+        <div className="flex items-center justify-between">
+          <DayNav date={date} setDate={setDate} />
+        </div>
+        <p className="mt-1 text-sm text-gray-500">Closed — set this in Settings &gt; Operating Hours</p>
+
+        {dayAppointments.length > 0 ? (
+          <ul className="mt-4 space-y-1.5">
+            {dayAppointments.map((appt) => (
+              <li
+                key={appt.id}
+                className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-600"
+              >
+                <span className="font-medium">{clientNameFor(appt.client)}</span>
+                <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime)))}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mt-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-400">
+            Closed all day — nothing to book.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Open day: the grid's range comes straight from Operating Hours,
+  // widened only to cover an existing appointment that falls outside
+  // it (e.g. hours were tightened after something was already booked)
+  // — never widened past that just to leave extra clickable space.
+  let rangeStart = timeToMinutes(businessHour.open_time ?? "09:00:00");
+  let rangeEnd = timeToMinutes(businessHour.close_time ?? "17:00:00");
   for (const appt of dayAppointments) {
     const start = minutesSinceMidnight(new Date(appt.datetime));
     rangeStart = Math.min(rangeStart, floorTo15(start));
@@ -103,42 +169,14 @@ export function DayView({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1))}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            ←
-          </button>
-          <h3 className="text-base font-medium">
-            {date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-          </h3>
-          <button
-            onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1))}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            →
-          </button>
-          <button
-            onClick={() => setDate(new Date())}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Today
-          </button>
-        </div>
-        <Button
-          onClick={() => setAddFormTime(addFormTime === null ? minutesToHHMM(rangeStart) : null)}
-        >
+        <DayNav date={date} setDate={setDate} />
+        <Button onClick={() => setAddFormTime(addFormTime === null ? minutesToHHMM(rangeStart) : null)}>
           {addFormTime !== null ? "Cancel" : "Add appointment"}
         </Button>
       </div>
 
       <p className="mt-1 text-sm text-gray-500">
-        {businessHour?.is_open ? "Open" : "Closed"}
-        {businessHour?.is_open && businessHour.open_time && businessHour.close_time
-          ? ` ${minutesToLabel(timeToMinutes(businessHour.open_time))} – ${minutesToLabel(timeToMinutes(businessHour.close_time))}`
-          : ""}
-        {" · click an open slot below to book it"}
+        Open {minutesToLabel(rangeStart)} – {minutesToLabel(rangeEnd)} · click an open slot below to book it
       </p>
 
       {addFormTime !== null && (
