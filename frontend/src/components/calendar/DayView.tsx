@@ -92,7 +92,7 @@ export function DayView({
   const businessHour = businessHoursFor(hours, date);
 
   function clientNameFor(clientId: number) {
-    return clients.find((c) => c.id === clientId)?.name ?? "Client";
+    return clients.find((c) => c.id === clientId)?.full_name ?? "Client";
   }
 
   // A day Operating Hours marks closed is genuinely off — no grid, no

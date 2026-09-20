@@ -40,7 +40,7 @@ export function formatHourString(hhmmss: string) {
 }
 
 export function clientName(clients: Client[], clientId: number) {
-  return clients.find((c) => c.id === clientId)?.name ?? "Client";
+  return clients.find((c) => c.id === clientId)?.full_name ?? "Client";
 }
 
 export function isClosedDay(hours: BusinessHour[], date: Date) {

@@ -1,14 +1,24 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
+// ----------------------------------------------------------------------------
 // This shape mirrors what clients/serializers.py's ClientSerializer sends.
+// Split into first_name/last_name instead of one "name" field per Mako —
+// gives Data Import/Export (a Fast-Follow feature) clean, unambiguous
+// columns to map to, matching what business_plan.MD's Data Import
+// section already assumed ("ClientFirstName, ClientLastName").
+// ----------------------------------------------------------------------------
+
 type Client = {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
   email: string;
   phone: string;
   notes: string;
@@ -17,7 +27,8 @@ type Client = {
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[] | null>(null); // null = still loading, [] = loaded but genuinely empty
   const [showForm, setShowForm] = useState(false); // toggles the "add client" form open/closed
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -35,12 +46,25 @@ export default function ClientsPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // The backend enforces this too (see clients/serializers.py), but
+    // catching it here means someone doesn't have to submit the form
+    // and wait on a network round-trip just to find out.
+    if (!email && !phone) {
+      setError("Enter at least an email or a phone number.");
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await apiFetch("/api/clients/", { method: "POST", body: { name, email, phone, notes: "" } });
+      await apiFetch("/api/clients/", {
+        method: "POST",
+        body: { first_name: firstName, last_name: lastName, email, phone, notes: "" },
+      });
       // Reset the form back to empty and hide it, then reload the list to
       // show the new client.
-      setName("");
+      setFirstName("");
+      setLastName("");
       setEmail("");
       setPhone("");
       setShowForm(false);
@@ -56,7 +80,7 @@ export default function ClientsPage() {
     // Per the plan doc's "confirmation prompts on destructive actions"
     // rule — a plain browser confirm() dialog is enough for v1; no
     // custom modal needed for something this simple.
-    if (!confirm(`Delete ${client.name}? This can't be undone.`)) return;
+    if (!confirm(`Delete ${client.full_name}? This can't be undone.`)) return;
     await apiFetch(`/api/clients/${client.id}/`, { method: "DELETE" });
     load();
   }
@@ -72,11 +96,12 @@ export default function ClientsPage() {
 
       {showForm && (
         <Card className="p-4">
-          <form onSubmit={handleCreate} className="grid grid-cols-3 gap-3">
-            <Field label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
+          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-3">
+            <Field label="First name" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+            <Field label="Last name" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
             <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <div className="col-span-3 flex items-center gap-3">
+            <Field label="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <div className="col-span-2 flex items-center gap-3">
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Saving…" : "Save client"}
               </Button>
@@ -96,10 +121,13 @@ export default function ClientsPage() {
         <Card className="divide-y divide-gray-200">
           {clients.map((client) => (
             <div key={client.id} className="flex items-center justify-between p-4">
-              <div>
-                <p className="font-medium">{client.name}</p>
+              {/* Only the name/info half is a link — the whole row can't
+                  be, since the Delete button needs to sit next to it
+                  without being nested inside the same clickable link. */}
+              <Link href={`/dashboard/clients/${client.id}`} className="min-w-0 flex-1 hover:opacity-80">
+                <p className="font-medium text-gray-900">{client.full_name}</p>
                 <p className="text-sm text-gray-500">{client.email || client.phone || "—"}</p>
-              </div>
+              </Link>
               <button
                 onClick={() => handleDelete(client)}
                 className="text-sm text-red-600 hover:underline"

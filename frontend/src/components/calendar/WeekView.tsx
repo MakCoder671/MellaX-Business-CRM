@@ -62,7 +62,7 @@ export function WeekView({
   });
 
   function clientNameFor(clientId: number) {
-    return clients.find((c) => c.id === clientId)?.name ?? "Client";
+    return clients.find((c) => c.id === clientId)?.full_name ?? "Client";
   }
 
   // The shared range: earliest open time to latest close time across

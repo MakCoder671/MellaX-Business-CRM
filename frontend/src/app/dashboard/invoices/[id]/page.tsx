@@ -50,7 +50,7 @@ type Invoice = {
 
 type TenderType = { id: number; name: string };
 type Service = { id: number; name: string };
-type Client = { id: number; name: string };
+type Client = { id: number; full_name: string };
 
 export default function InvoiceDetailPage({ params }: PageProps<"/dashboard/invoices/[id]">) {
   const { id } = use(params); // the invoice's ID, pulled from the URL — e.g. /dashboard/invoices/7 -> id = "7"
@@ -155,7 +155,12 @@ export default function InvoiceDetailPage({ params }: PageProps<"/dashboard/invo
         </div>
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-500">
-            {client?.name} · {invoice.issued_date}
+            {client && (
+              <Link href={`/dashboard/clients/${client.id}`} className="text-emerald-700 underline">
+                {client.full_name}
+              </Link>
+            )}{" "}
+            · {invoice.issued_date}
           </p>
           <Link href={`/dashboard/invoices/${invoice.id}/print`} className="text-sm text-emerald-700 underline">
             Print / Download

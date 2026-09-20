@@ -84,7 +84,7 @@ export function AddAppointmentForm({
           </option>
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {c.full_name}
             </option>
           ))}
         </select>

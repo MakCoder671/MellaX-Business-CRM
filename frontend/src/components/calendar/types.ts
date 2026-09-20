@@ -11,7 +11,7 @@ export type BusinessHour = {
   is_open: boolean;
 };
 
-export type Client = { id: number; name: string };
+export type Client = { id: number; full_name: string };
 
 export type Appointment = {
   id: number;

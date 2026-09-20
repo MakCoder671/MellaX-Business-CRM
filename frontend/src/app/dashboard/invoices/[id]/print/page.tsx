@@ -48,7 +48,7 @@ type Invoice = {
   payment_records: Payment[];
 };
 
-type Client = { id: number; name: string; email: string; phone: string };
+type Client = { id: number; full_name: string; email: string; phone: string };
 type Service = { id: number; name: string };
 
 export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoices/[id]/print">) {
@@ -115,7 +115,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
 
         <div className="mt-8">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Bill to</p>
-          <p className="mt-1 font-medium text-gray-900">{client.name}</p>
+          <p className="mt-1 font-medium text-gray-900">{client.full_name}</p>
           {client.email && <p className="text-sm text-gray-500">{client.email}</p>}
           {client.phone && <p className="text-sm text-gray-500">{client.phone}</p>}
         </div>

@@ -13,7 +13,7 @@ import { Button, Card, ErrorText } from "@/components/form";
 // as the user clicks "add another line item" / "remove."
 // ----------------------------------------------------------------------------
 
-type Client = { id: number; name: string };
+type Client = { id: number; full_name: string };
 type Service = { id: number; name: string; price: string };
 type Invoice = {
   id: number;
@@ -58,7 +58,7 @@ export default function InvoicesPage() {
   // (not the client's name), this looks the name up from the `clients`
   // list we already fetched — avoids a separate API call per invoice row.
   function clientName(id: number) {
-    return clients.find((c) => c.id === id)?.name ?? `#${id}`;
+    return clients.find((c) => c.id === id)?.full_name ?? `#${id}`;
   }
 
   // Updates ONE line item in the array by index, leaving the others
@@ -140,7 +140,7 @@ export default function InvoicesPage() {
                 </option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {c.full_name}
                   </option>
                 ))}
               </select>
