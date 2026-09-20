@@ -1,4 +1,5 @@
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
 
 from common.views import TenantScopedModelViewSet
 
@@ -64,6 +65,17 @@ class TenderTypeViewSet(TenantScopedModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(business_account=self.request.user, is_custom=True)
+
+    def perform_destroy(self, instance):
+        # get_queryset() above deliberately includes the system-wide
+        # defaults (business_account=None) so they show up in the list —
+        # but that means without this check, DELETE would happily let
+        # someone delete "Cash" for THEMSELVES and accidentally wipe it
+        # out for every account, since it's the same shared row. Only
+        # ever allow deleting a tender type that actually belongs to you.
+        if instance.business_account_id is None:
+            raise PermissionDenied("Default tender types can't be deleted.")
+        instance.delete()
 
 
 class DiscountViewSet(TenantScopedModelViewSet):

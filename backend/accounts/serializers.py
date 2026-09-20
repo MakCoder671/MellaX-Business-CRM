@@ -55,6 +55,15 @@ class SignupSerializer(serializers.ModelSerializer):
         account = BusinessAccount.objects.create_user(
             password=password, accepted_tos_at=timezone.now(), **validated_data
         )
+
+        # Per the plan doc: "Every account gets a landing page from day
+        # one." Imported here (not at the top of the file) to avoid the
+        # accounts app needing to know about landingpages at import time —
+        # this way it's only ever loaded right when it's actually needed.
+        from landingpages.models import LandingPage
+
+        LandingPage.objects.create(business_account=account, slug=f"business-{account.pk}")
+
         return account
 
 
@@ -92,8 +101,10 @@ class LoginSerializer(serializers.Serializer):
 
 class BusinessAccountSerializer(serializers.ModelSerializer):
     """
-    Used for GET/PATCH /api/accounts/me/ — showing and editing your own
-    account details (Settings > Business Information).
+    Used for GET/PATCH /api/accounts/me/ — the whole Settings tab reads
+    and writes through this one serializer, since almost every Settings
+    field lives directly on BusinessAccount (see the comment in
+    accounts/models.py explaining why).
     """
 
     class Meta:
@@ -103,13 +114,24 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
             "email",
             "business_name",
             "plan_tier",
+            # Business Information
             "phone",
             "address",
+            # Branding
+            "logo",
+            "accent_color",
+            # Invoice Settings
+            "service_tax_percent",
+            "product_tax_percent",
+            "invoice_prefix",
+            "default_invoice_terms",
+            "time_zone",
             "is_email_verified",
             "created_at",
         ]
         # read_only_fields = things that show up in the JSON response but
         # can't be changed by sending them in a PATCH request. Makes sense:
         # you shouldn't be able to un-verify your own email or change your
-        # own plan tier by editing your profile form.
+        # own plan tier by editing your profile form (plan changes are a
+        # Fast-Follow feature — self-service billing isn't wired up yet).
         read_only_fields = ["id", "email", "plan_tier", "is_email_verified", "created_at"]

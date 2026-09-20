@@ -22,8 +22,19 @@ export type Account = {
   email: string;
   business_name: string;
   plan_tier: "basic" | "plus" | "premium";
+  // Business Information
   phone: string;
   address: string;
+  // Branding — `logo` is a full URL once uploaded (e.g.
+  // "http://127.0.0.1:8001/media/logos/xyz.png"), or null until then.
+  logo: string | null;
+  accent_color: string;
+  // Invoice Settings
+  service_tax_percent: string; // Django's DecimalField serializes as a string, e.g. "8.50" — keeps the exact value instead of floating-point rounding
+  product_tax_percent: string;
+  invoice_prefix: string;
+  default_invoice_terms: string;
+  time_zone: string;
   is_email_verified: boolean;
   created_at: string;
 };

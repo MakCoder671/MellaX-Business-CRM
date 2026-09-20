@@ -21,6 +21,7 @@ const NAV = [
   { href: "/dashboard/services", label: "Services" },
   { href: "/dashboard/invoices", label: "Invoices" },
   { href: "/dashboard/reports", label: "Reports" },
+  { href: "/dashboard/settings", label: "Settings" },
 ];
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {

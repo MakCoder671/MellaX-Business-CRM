@@ -6,10 +6,13 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/form";
+import { GettingStarted } from "@/components/GettingStarted";
 
 // The dashboard "home" page — /dashboard exactly, not /dashboard/clients
 // etc. Just a quick at-a-glance summary: how many clients, and this
-// year's revenue/net from the P&L report endpoint.
+// year's revenue/net from the P&L report endpoint. Also where
+// <GettingStarted /> lives — the setup checklist popup that replaces the
+// old forced onboarding wizard (see components/GettingStarted.tsx).
 
 type ProfitLoss = { revenue: number; refunds: number; net: number; tax_collected: number };
 
@@ -28,6 +31,11 @@ export default function DashboardOverviewPage() {
 
   return (
     <div className="space-y-6">
+      {/* Renders as a small text link once dismissed, or pops open as a
+          modal automatically for a fresh account — see the component
+          itself for the logic behind which one shows. */}
+      <GettingStarted />
+
       <h1 className="text-xl font-semibold">
         Welcome back, {account?.business_name}
       </h1>

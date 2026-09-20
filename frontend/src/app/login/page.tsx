@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { apiFetch, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 
@@ -22,14 +22,11 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-
-      // Where do we send them after logging in? There's no explicit
-      // "has this account finished onboarding?" flag in the database yet
-      // — so we use a simple stand-in signal instead: if they have zero
-      // clients, they've probably never been through the onboarding
-      // wizard, so send them there. Otherwise, straight to the dashboard.
-      const clients = await apiFetch<unknown[]>("/api/clients/");
-      router.push(clients.length === 0 ? "/onboarding" : "/dashboard");
+      // Always straight to the dashboard — even for a brand new account.
+      // No blocking setup wizard; the dashboard itself shows a
+      // "Getting Started" checklist popup for anyone who hasn't finished
+      // setup yet (see dashboard/page.tsx's <GettingStarted />).
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {

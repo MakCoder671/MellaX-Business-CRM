@@ -84,7 +84,7 @@ export async function apiFetch<T>(
   options: { method?: string; body?: unknown; auth?: boolean } = {}
 ): Promise<T> {
   const { method = "GET", body, auth = true } = options;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {};
 
   if (auth) {
     // Attach "Authorization: Token <key>" so the backend knows who's
@@ -96,10 +96,20 @@ export async function apiFetch<T>(
     if (token) headers["Authorization"] = `Token ${token}`;
   }
 
+  // A file upload (like a logo) has to be sent as FormData, not JSON —
+  // browsers can't JSON.stringify a File. When the caller already built
+  // a FormData object themselves (see Settings' branding form), we send
+  // it as-is and skip the "Content-Type: application/json" header
+  // entirely — the browser sets its own Content-Type for FormData
+  // automatically, including a required "boundary" value we couldn't
+  // easily set by hand.
+  const isFormData = body instanceof FormData;
+  if (!isFormData) headers["Content-Type"] = "application/json";
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (response.status === 204) return undefined as T; // "204 No Content" means success with nothing to return (e.g. DELETE, logout)

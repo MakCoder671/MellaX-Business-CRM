@@ -75,6 +75,12 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=32, blank=True)
     address = models.CharField(max_length=255, blank=True)
 
+    # --- Branding (Settings section) ---
+    # Per the plan doc: color only, not a full theme redesign — keeps every
+    # account looking consistent and professional instead of a mess.
+    logo = models.ImageField(upload_to="logos/", null=True, blank=True)
+    accent_color = models.CharField(max_length=7, default="#059669")  # hex color, e.g. "#059669" — defaults to MellaX's own emerald green
+
     # --- Invoice Settings (see business_plan.MD, Settings section) ---
     # These live here on the account instead of a separate "Settings" model
     # because they're one-per-account, simple values — no need for a whole
