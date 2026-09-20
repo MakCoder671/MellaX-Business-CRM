@@ -157,48 +157,65 @@ export function DayView({
         </div>
       )}
 
-      {/* The time grid itself: a stack of 15-minute slots (a labeled,
-          solid line every 30 minutes; a lighter tick at the in-between
-          15-minute mark), with appointment blocks absolutely positioned
-          on top, sized to their actual duration. */}
-      <div className="relative mt-4 select-none" style={{ height: slots.length * SLOT_HEIGHT_PX }}>
-        {slots.map((minutes) => {
-          const isHourOrHalf = minutes % 30 === 0;
-          return (
-            <button
-              key={minutes}
-              onClick={() => setAddFormTime(minutesToHHMM(minutes))}
-              className={`absolute inset-x-0 flex items-start pl-14 text-left hover:bg-emerald-50/60 ${
-                isHourOrHalf ? "border-t border-gray-200" : "border-t border-dashed border-gray-100"
-              }`}
-              style={{ top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
-            >
-              {isHourOrHalf && (
-                <span className="-mt-2 w-12 shrink-0 text-right text-[11px] text-gray-400">
-                  {minutesToLabel(minutes)}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* The time grid itself, as two clearly bordered columns rather
+          than everything layered on top of each other: a fixed-width
+          label gutter on the left (its own border-right draws the line
+          separating "times" from "layout"), and the actual slot
+          grid + appointment blocks on the right. Keeping labels in
+          their own column — instead of padding them into the same
+          space appointment blocks start from — is also what stops a
+          block from ever visually swallowing the time next to it. */}
+      <div
+        className="mt-4 flex overflow-hidden rounded-md border border-gray-300 select-none"
+        style={{ height: slots.length * SLOT_HEIGHT_PX }}
+      >
+        <div className="relative w-14 shrink-0 border-r border-gray-300 bg-gray-50">
+          {slots
+            .filter((minutes) => minutes % 30 === 0)
+            .map((minutes) => (
+              <span
+                key={minutes}
+                className="absolute right-2 -translate-y-1/2 text-[11px] text-gray-500"
+                style={{ top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX }}
+              >
+                {minutesToLabel(minutes)}
+              </span>
+            ))}
+        </div>
 
-        {dayAppointments.map((appt) => {
-          const start = minutesSinceMidnight(new Date(appt.datetime));
-          const top = (start - rangeStart) * (SLOT_HEIGHT_PX / SLOT_MINUTES);
-          const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
-          return (
-            <div
-              key={appt.id}
-              className="absolute left-14 right-1 overflow-hidden rounded-md bg-emerald-500 px-2 py-1 text-xs text-white shadow-sm"
-              style={{ top, height }}
-            >
-              <p className="truncate font-medium">{clientNameFor(appt.client)}</p>
-              <p className="truncate text-emerald-50">
-                {minutesToLabel(start)} · {appt.duration_minutes} min
-              </p>
-            </div>
-          );
-        })}
+        <div className="relative flex-1">
+          {slots.map((minutes) => {
+            const isHourOrHalf = minutes % 30 === 0;
+            return (
+              <button
+                key={minutes}
+                onClick={() => setAddFormTime(minutesToHHMM(minutes))}
+                className={`absolute inset-x-0 hover:bg-emerald-50/60 ${
+                  isHourOrHalf ? "border-t border-gray-200" : "border-t border-dashed border-gray-100"
+                }`}
+                style={{ top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
+              />
+            );
+          })}
+
+          {dayAppointments.map((appt) => {
+            const start = minutesSinceMidnight(new Date(appt.datetime));
+            const top = (start - rangeStart) * (SLOT_HEIGHT_PX / SLOT_MINUTES);
+            const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
+            return (
+              <div
+                key={appt.id}
+                className="absolute left-1 right-1 overflow-hidden rounded-md border border-emerald-700 bg-emerald-500 px-2 py-1 text-xs text-white shadow-sm"
+                style={{ top, height }}
+              >
+                <p className="truncate font-medium">{clientNameFor(appt.client)}</p>
+                <p className="truncate text-emerald-50">
+                  {minutesToLabel(start)} · {appt.duration_minutes} min
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
