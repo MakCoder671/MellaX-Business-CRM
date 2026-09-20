@@ -5,6 +5,17 @@ import { useState } from "react";
 import { Button } from "@/components/form";
 
 import { AddAppointmentForm } from "./AddAppointmentForm";
+import {
+  SLOT_HEIGHT_PX,
+  SLOT_MINUTES,
+  ceilTo15,
+  floorTo15,
+  minutesSinceMidnight,
+  minutesToHHMM,
+  minutesToLabel,
+  minutesToPx,
+  timeToMinutes,
+} from "./gridHelpers";
 import { appointmentsOn, businessHoursFor } from "./helpers";
 import type { Appointment, BusinessHour, Client } from "./types";
 
@@ -26,40 +37,6 @@ import type { Appointment, BusinessHour, Client } from "./types";
 // appointment through it — "Off" means off, not "a made-up default
 // range you can still book into."
 // ----------------------------------------------------------------------------
-
-const SLOT_MINUTES = 15;
-const SLOT_HEIGHT_PX = 22;
-
-function timeToMinutes(hhmmss: string) {
-  const [h, m] = hhmmss.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function minutesSinceMidnight(date: Date) {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function minutesToLabel(minutes: number) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  const period = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-function minutesToHHMM(minutes: number) {
-  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-}
-
-// Rounds down/up to the nearest 15-minute mark, so the grid's range
-// always lines up cleanly with the slot lines even when an appointment
-// starts or ends at an odd time.
-function floorTo15(minutes: number) {
-  return Math.floor(minutes / SLOT_MINUTES) * SLOT_MINUTES;
-}
-function ceilTo15(minutes: number) {
-  return Math.ceil(minutes / SLOT_MINUTES) * SLOT_MINUTES;
-}
 
 function DayNav({
   date,
@@ -163,7 +140,7 @@ export function DayView({
     rangeEnd = Math.max(rangeEnd, ceilTo15(start + appt.duration_minutes));
   }
 
-  const slots = [];
+  const slots: number[] = [];
   for (let m = rangeStart; m < rangeEnd; m += SLOT_MINUTES) slots.push(m);
 
   return (
@@ -221,7 +198,7 @@ export function DayView({
                 key={minutes}
                 className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-gray-300 pr-2 text-[11px] font-medium text-gray-500"
                 style={{
-                  top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX,
+                  top: minutesToPx(minutes, rangeStart),
                   height: SLOT_HEIGHT_PX * 2,
                 }}
               >
@@ -241,14 +218,14 @@ export function DayView({
                 className={`absolute inset-x-0 hover:bg-emerald-50/60 ${
                   isHourOrHalf ? "border-t border-gray-200" : "border-t border-dashed border-gray-100"
                 }`}
-                style={{ top: ((minutes - rangeStart) / SLOT_MINUTES) * SLOT_HEIGHT_PX, height: SLOT_HEIGHT_PX }}
+                style={{ top: minutesToPx(minutes, rangeStart), height: SLOT_HEIGHT_PX }}
               />
             );
           })}
 
           {dayAppointments.map((appt) => {
             const start = minutesSinceMidnight(new Date(appt.datetime));
-            const top = (start - rangeStart) * (SLOT_HEIGHT_PX / SLOT_MINUTES);
+            const top = minutesToPx(start, rangeStart);
             const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
             return (
               <div
