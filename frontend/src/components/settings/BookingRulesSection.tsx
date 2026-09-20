@@ -69,8 +69,10 @@ export function BookingRulesSection() {
           <span>
             <span className="block text-sm font-medium text-gray-700">Allow double booking</span>
             <span className="block text-sm text-gray-500">
-              Off: a new appointment can&apos;t overlap one that&apos;s already scheduled — it has to land in a
-              fully open spot. On: clients can be booked on the same day and at the same time.
+              <span className="font-semibold">Off</span>: a new appointment can&apos;t overlap one that&apos;s
+              already scheduled, it has to land in a fully open spot.{" "}
+              <span className="font-semibold">On</span>: clients can be booked on the same day and at the same
+              time.
             </span>
           </span>
         </label>
