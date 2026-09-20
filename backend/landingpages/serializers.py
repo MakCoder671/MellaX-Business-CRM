@@ -43,9 +43,16 @@ class PublicLandingPageSerializer(serializers.ModelSerializer):
     """
     What a random visitor on the internet sees at mellax.com/l/<slug>.
     Built from LandingPage, but pulls in a few fields from the related
-    BusinessAccount (business name, phone, email) — WITHOUT exposing the
-    whole BusinessAccount record (which would include things like
-    plan_tier, invoice settings, etc that are nobody else's business).
+    BusinessAccount (business name, phone, email, address, logo) —
+    WITHOUT exposing the whole BusinessAccount record (which would
+    include things like plan_tier, invoice settings, etc that are
+    nobody else's business).
+
+    This is also the "Business Information flows to the landing page
+    automatically" connection: since these fields are sourced straight
+    from BusinessAccount, editing them in Settings > Business
+    Information (or the logo in Branding) updates the public page too,
+    with nothing to re-enter twice.
     """
 
     # `source="business_account.business_name"` means "reach through the
@@ -54,6 +61,8 @@ class PublicLandingPageSerializer(serializers.ModelSerializer):
     business_name = serializers.CharField(source="business_account.business_name")
     phone = serializers.CharField(source="business_account.phone")
     email = serializers.EmailField(source="business_account.email")
+    address = serializers.CharField(source="business_account.address")
+    logo = serializers.ImageField(source="business_account.logo", read_only=True)
 
     photos = LandingPagePhotoSerializer(many=True, read_only=True)
     services = serializers.SerializerMethodField()  # a "computed" field — see get_services() below
@@ -66,6 +75,8 @@ class PublicLandingPageSerializer(serializers.ModelSerializer):
             "blurb_text",
             "phone",
             "email",
+            "address",
+            "logo",
             "photos",
             "services",
             "booking_enabled",

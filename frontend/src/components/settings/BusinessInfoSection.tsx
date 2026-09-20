@@ -8,9 +8,11 @@ import { Button, Card, ErrorText, Field } from "@/components/form";
 
 // ----------------------------------------------------------------------------
 // The "Business Information" section of Settings — name, phone, address.
-// These feed straight into invoices, the landing page, and documents
-// automatically per the plan doc, so getting them right here matters
-// even though this looks like the most boring section.
+// This is the ONE place these get entered: invoices, the public landing
+// page, and marketing e-blasts all pull phone/address straight from the
+// account (see landingpages/serializers.py's PublicLandingPageSerializer
+// and marketing/views.py's e-blast footer) instead of asking for it
+// again — update it here and it's updated everywhere it shows up.
 // ----------------------------------------------------------------------------
 
 export function BusinessInfoSection() {
@@ -48,7 +50,7 @@ export function BusinessInfoSection() {
     <Card className="p-6">
       <h2 className="text-lg font-medium">Business Information</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Feeds into invoices, your landing page, and documents automatically.
+        Feeds into invoices, your landing page, and marketing e-blasts automatically — no need to enter it twice.
       </p>
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <Field

@@ -20,6 +20,8 @@ type PublicLandingPage = {
   blurb_text: string;
   phone: string;
   email: string;
+  address: string;
+  logo: string | null;
   photos: { id: number; image: string; display_order: number }[];
   services: { name: string; description: string; price: string }[];
   booking_enabled: boolean;
@@ -54,6 +56,10 @@ export default function PublicLandingPage({ params }: PageProps<"/l/[slug]">) {
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-16">
+      {page.logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={page.logo} alt={`${page.business_name} logo`} className="mb-4 h-16 w-16 rounded-md object-cover" />
+      )}
       <h1 className="text-3xl font-semibold">{page.business_name}</h1>
       {page.blurb_text && <p className="mt-3 text-gray-600">{page.blurb_text}</p>}
 
@@ -93,6 +99,7 @@ export default function PublicLandingPage({ params }: PageProps<"/l/[slug]">) {
       <section className="mt-8 text-sm text-gray-600">
         {page.phone && <p>{page.phone}</p>}
         {page.email && <p>{page.email}</p>}
+        {page.address && <p>{page.address}</p>}
       </section>
     </main>
   );

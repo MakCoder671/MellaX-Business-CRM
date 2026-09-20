@@ -153,9 +153,14 @@ export default function InvoiceDetailPage({ params }: PageProps<"/dashboard/invo
             {invoice.status}
           </span>
         </div>
-        <p className="text-sm text-gray-500">
-          {client?.name} · {invoice.issued_date}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            {client?.name} · {invoice.issued_date}
+          </p>
+          <Link href={`/dashboard/invoices/${invoice.id}/print`} className="text-sm text-emerald-700 underline">
+            Print / Download
+          </Link>
+        </div>
       </div>
 
       <Card className="p-4">

@@ -126,7 +126,18 @@ class LoginView(APIView):
         # how the backend knows who's asking.
         token, _ = Token.objects.get_or_create(user=account)
         return Response(
-            {"token": token.key, "account": BusinessAccountSerializer(account).data}
+            {
+                "token": token.key,
+                # context={"request": request} matters here — without it,
+                # DRF's ImageField has no request to build an absolute URL
+                # from, so `logo` would come back as a bare relative path
+                # ("/media/logos/x.png") instead of a full URL. Every
+                # OTHER place this serializer gets used is through a
+                # generic view (MeView), which passes this context
+                # automatically — this is the one place it's built by
+                # hand, so it's the one place that has to be explicit.
+                "account": BusinessAccountSerializer(account, context={"request": request}).data,
+            }
         )
 
 

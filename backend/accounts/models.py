@@ -76,10 +76,12 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
     address = models.CharField(max_length=255, blank=True)
 
     # --- Branding (Settings section) ---
-    # Per the plan doc: color only, not a full theme redesign — keeps every
-    # account looking consistent and professional instead of a mess.
+    # Shows up on invoices, the public landing page, marketing e-blasts,
+    # and in the dashboard's own sidebar once logged in. Color/theme
+    # options were here too originally (a single accent_color field), but
+    # that's being replaced by a proper Theme tab later — removed rather
+    # than left as a half-used field nothing reads anymore.
     logo = models.ImageField(upload_to="logos/", null=True, blank=True)
-    accent_color = models.CharField(max_length=7, default="#059669")  # hex color, e.g. "#059669" — defaults to MellaX's own emerald green
 
     # --- Calendar Settings (Settings section) ---
     # Double-booking toggle: off (default) means the backend rejects a new

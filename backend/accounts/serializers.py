@@ -119,7 +119,6 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
             "address",
             # Branding
             "logo",
-            "accent_color",
             # Calendar Settings
             "allow_double_booking",
             "default_calendar_view",

@@ -1,5 +1,6 @@
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
+from django.utils.html import escape, linebreaks
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -19,6 +20,41 @@ from .serializers import EBlastSerializer
 # ----------------------------------------------------------------------------
 
 
+def _build_html_email(request, account, eblast):
+    """
+    Wraps the business's plain-text subject/body in a simple branded
+    shell — this is the "Branding connects to Marketing" piece: the
+    account's own logo and business name/address show up automatically
+    on every e-blast, with nothing to re-enter per campaign.
+    """
+    logo_html = ""
+    if account.logo:
+        # build_absolute_uri turns the logo's relative MEDIA_URL path
+        # into a full http://... URL — an email client has no idea what
+        # "relative to this site" even means, unlike a browser tab.
+        logo_url = request.build_absolute_uri(account.logo.url)
+        logo_html = f'<img src="{escape(logo_url)}" alt="{escape(account.business_name)}" style="height:48px;width:auto;margin-bottom:16px;">'
+
+    # linebreaks() both HTML-escapes the business-authored text (so a
+    # stray "<" or "&" someone typed can't break the email's HTML or
+    # inject markup) AND turns blank lines into paragraph breaks — the
+    # same thing Django's {{ value|linebreaks }} template filter does.
+    body_html = linebreaks(eblast.body)
+
+    address_line = f"<br>{escape(account.address)}" if account.address else ""
+
+    return f"""
+    <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">
+      {logo_html}
+      {body_html}
+      <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
+      <p style="font-size: 12px; color: #9ca3af; line-height: 1.5;">
+        {escape(account.business_name)}{address_line}
+      </p>
+    </div>
+    """
+
+
 class EBlastViewSet(TenantScopedModelViewSet):
     queryset = EBlast.objects.all()
     serializer_class = EBlastSerializer
@@ -28,8 +64,9 @@ class EBlastViewSet(TenantScopedModelViewSet):
         """
         POST /api/marketing/eblasts/<id>/send/ — the "sent manually to
         your client list" part of the plan doc. Sends the same subject/
-        body to every client that has an email on file, then locks the
-        e-blast so it can't be edited or sent again.
+        body (wrapped with the business's logo and contact info, see
+        _build_html_email above) to every client that has an email on
+        file, then locks the e-blast so it can't be edited or sent again.
         """
         eblast = self.get_object()  # already scoped to this account via get_queryset() — can't send someone else's e-blast
 
@@ -50,6 +87,8 @@ class EBlastViewSet(TenantScopedModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        html_body = _build_html_email(request, request.user, eblast)
+
         # send_mail with a list of names in recipient_list would put every
         # client's address in the same "To:" field, so everyone could see
         # everyone else's email — not great. Sending one at a time (each
@@ -57,12 +96,18 @@ class EBlastViewSet(TenantScopedModelViewSet):
         # private from the others, at the cost of one email per client
         # instead of one email total. Fine at small-business scale.
         for email in recipients:
-            send_mail(
+            # EmailMultiAlternatives instead of plain send_mail: the
+            # "message" argument is a plain-text fallback for email
+            # clients that don't render HTML, and attach_alternative adds
+            # the actual branded HTML version most clients will show.
+            message = EmailMultiAlternatives(
                 subject=eblast.subject,
-                message=eblast.body,
+                body=eblast.body,
                 from_email=None,  # None = use Django's DEFAULT_FROM_EMAIL setting
-                recipient_list=[email],
+                to=[email],
             )
+            message.attach_alternative(html_body, "text/html")
+            message.send()
 
         eblast.sent_at = timezone.now()
         eblast.recipient_count = len(recipients)

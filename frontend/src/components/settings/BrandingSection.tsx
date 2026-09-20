@@ -7,32 +7,37 @@ import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText } from "@/components/form";
 
 // ----------------------------------------------------------------------------
-// Branding — logo upload and one accent color. Per the plan doc: "color
-// only, not a full layout/theme redesign, to keep every account looking
-// consistent and professional." So this section is deliberately small —
-// no font pickers, no custom CSS, just these two things.
+// Branding — just the logo for now. It shows up in four places once
+// uploaded: the printable invoice letterhead, the public landing page,
+// marketing e-blasts, and the dashboard's own sidebar while logged in —
+// all four read it straight from the account, so uploading it here is
+// the only place it's ever set.
+//
+// Color/theme options used to live here too (a single accent_color
+// field) — removed in favor of a proper Theme tab planned for later,
+// rather than keeping a half-built color picker around.
 // ----------------------------------------------------------------------------
 
 export function BrandingSection() {
   const { account, refreshAccount } = useAuth();
-  const [accentColor, setAccentColor] = useState(account?.accent_color ?? "#059669");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [removing, setRemoving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!logoFile) return;
     setError(null);
     setSaved(false);
     setSubmitting(true);
     try {
       // A file upload can't be sent as plain JSON — FormData is the
       // browser's way of building a "multipart" request body that can
-      // carry both regular fields AND a binary file in one request.
+      // carry a binary file.
       const formData = new FormData();
-      formData.append("accent_color", accentColor);
-      if (logoFile) formData.append("logo", logoFile);
+      formData.append("logo", logoFile);
 
       await apiFetch("/api/accounts/me/", { method: "PATCH", body: formData });
       await refreshAccount();
@@ -45,17 +50,46 @@ export function BrandingSection() {
     }
   }
 
+  async function handleRemove() {
+    if (!confirm("Remove your logo? It'll disappear from invoices, your landing page, and marketing emails.")) return;
+    setError(null);
+    setRemoving(true);
+    try {
+      // Removing a file needs a plain JSON body (logo: null), not
+      // FormData — DRF's ImageField accepts null as "clear this field"
+      // when the model allows it (see accounts/models.py, null=True).
+      await apiFetch("/api/accounts/me/", { method: "PATCH", body: { logo: null } });
+      await refreshAccount();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setRemoving(false);
+    }
+  }
+
   return (
     <Card className="p-6">
       <h2 className="text-lg font-medium">Branding</h2>
-      <p className="mt-1 text-sm text-gray-500">Your logo and one accent color — shown on your landing page and documents.</p>
+      <p className="mt-1 text-sm text-gray-500">
+        Your logo — shown on invoices, your landing page, marketing e-blasts, and here in the dashboard.
+      </p>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
           <p className="text-sm font-medium text-gray-700">Logo</p>
           {account?.logo && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={account.logo} alt="Current logo" className="mt-2 h-16 w-16 rounded-md border border-gray-200 object-cover" />
+            <div className="mt-2 flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={account.logo} alt="Current logo" className="h-16 w-16 rounded-md border border-gray-200 object-cover" />
+              <button
+                type="button"
+                onClick={handleRemove}
+                disabled={removing}
+                className="text-sm text-red-600 hover:underline disabled:opacity-50"
+              >
+                {removing ? "Removing…" : "Remove logo"}
+              </button>
+            </div>
           )}
           <input
             type="file"
@@ -65,23 +99,8 @@ export function BrandingSection() {
           />
         </div>
 
-        <label className="block text-sm font-medium text-gray-700">
-          Accent color
-          <div className="mt-1 flex items-center gap-2">
-            {/* A native <input type="color"> gives you a real color-picker
-                UI for free, no library needed — the browser handles it. */}
-            <input
-              type="color"
-              value={accentColor}
-              onChange={(e) => setAccentColor(e.target.value)}
-              className="h-9 w-14 cursor-pointer rounded border border-gray-300"
-            />
-            <span className="text-sm text-gray-500">{accentColor}</span>
-          </div>
-        </label>
-
         <div className="flex items-center gap-3">
-          <Button type="submit" disabled={submitting}>
+          <Button type="submit" disabled={submitting || !logoFile}>
             {submitting ? "Saving…" : "Save"}
           </Button>
           {saved && <span className="text-sm text-emerald-700">Saved.</span>}

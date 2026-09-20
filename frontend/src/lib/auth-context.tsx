@@ -28,7 +28,6 @@ export type Account = {
   // Branding — `logo` is a full URL once uploaded (e.g.
   // "http://127.0.0.1:8001/media/logos/xyz.png"), or null until then.
   logo: string | null;
-  accent_color: string;
   // Calendar Settings
   allow_double_booking: boolean;
   default_calendar_view: "day" | "week" | "month";
