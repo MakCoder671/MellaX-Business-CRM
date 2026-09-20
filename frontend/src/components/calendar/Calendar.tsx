@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Card } from "@/components/form";
+import { useAuth } from "@/lib/auth-context";
 
 import { DayView } from "./DayView";
 import { MonthView } from "./MonthView";
@@ -20,6 +21,11 @@ import { WeekView } from "./WeekView";
 // Per Mako's feedback: Month is fine as a compact overview, but people
 // also want to see everything without anything capped/hidden — that's
 // what Week and Day are for.
+//
+// Which one shows FIRST is a per-account preference (Settings > Calendar
+// > Default calendar view) — read once as the initial state below. The
+// toggle still switches freely between all three any time; this only
+// decides where the widget starts.
 // ----------------------------------------------------------------------------
 
 type ViewMode = "day" | "week" | "month";
@@ -31,7 +37,8 @@ const VIEW_LABELS: Record<ViewMode, string> = {
 };
 
 export function Calendar() {
-  const [view, setView] = useState<ViewMode>("month");
+  const { account } = useAuth();
+  const [view, setView] = useState<ViewMode>(() => account?.default_calendar_view ?? "month");
   const { calendarId, hours, appointments, clients, loading, refresh } = useCalendarData();
 
   return (

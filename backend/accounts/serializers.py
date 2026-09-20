@@ -120,6 +120,9 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
             # Branding
             "logo",
             "accent_color",
+            # Calendar Settings
+            "allow_double_booking",
+            "default_calendar_view",
             # Invoice Settings
             "service_tax_percent",
             "product_tax_percent",

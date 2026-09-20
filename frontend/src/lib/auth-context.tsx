@@ -29,6 +29,9 @@ export type Account = {
   // "http://127.0.0.1:8001/media/logos/xyz.png"), or null until then.
   logo: string | null;
   accent_color: string;
+  // Calendar Settings
+  allow_double_booking: boolean;
+  default_calendar_view: "day" | "week" | "month";
   // Invoice Settings
   service_tax_percent: string; // Django's DecimalField serializes as a string, e.g. "8.50" — keeps the exact value instead of floating-point rounding
   product_tax_percent: string;

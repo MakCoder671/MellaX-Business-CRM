@@ -81,6 +81,26 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
     logo = models.ImageField(upload_to="logos/", null=True, blank=True)
     accent_color = models.CharField(max_length=7, default="#059669")  # hex color, e.g. "#059669" — defaults to MellaX's own emerald green
 
+    # --- Calendar Settings (Settings section) ---
+    # Double-booking toggle: off (default) means the backend rejects a new
+    # appointment that overlaps an existing one on the same calendar — see
+    # scheduling/serializers.py's AppointmentSerializer for where that's
+    # actually enforced. On means overlapping appointments are allowed.
+    allow_double_booking = models.BooleanField(default=False)
+
+    VIEW_DAY = "day"
+    VIEW_WEEK = "week"
+    VIEW_MONTH = "month"
+    CALENDAR_VIEW_CHOICES = [
+        (VIEW_DAY, "Day"),
+        (VIEW_WEEK, "Week"),
+        (VIEW_MONTH, "Month"),
+    ]
+    # Which of Day/Week/Month the dashboard Calendar widget opens to by
+    # default — purely a starting point, the viewer can still switch to
+    # either of the other two any time from the toggle on the widget itself.
+    default_calendar_view = models.CharField(max_length=5, choices=CALENDAR_VIEW_CHOICES, default=VIEW_MONTH)
+
     # --- Invoice Settings (see business_plan.MD, Settings section) ---
     # These live here on the account instead of a separate "Settings" model
     # because they're one-per-account, simple values — no need for a whole
