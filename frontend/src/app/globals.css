@@ -1,26 +1,23 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+  This file used to also set body's background/color/font via CSS
+  variables that automatically swapped to dark colors based on the
+  visitor's OS setting (a leftover from the create-next-app starter
+  template) — but none of MellaX's components are actually dark-mode
+  aware (Card, the sidebar, every form all hardcode light colors), so
+  that swap made body's background go near-black while every white
+  card/panel stayed light, since CSS `background` isn't inherited by
+  child elements. Worse, it silently beat the light background we DO
+  set intentionally in app/layout.tsx (`bg-gray-50` on <body>), because
+  Tailwind v4 puts its utility classes in a CSS layer, and plain
+  unlayered CSS rules always win over layered ones regardless of
+  specificity — a genuinely easy trap to fall into.
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
+  Removed rather than fixed in place: real dark mode support (every
+  component choosing its own light/dark colors on purpose) is a design
+  decision for later, not something to half-do by accident here. Body's
+  background/text color now come from Tailwind classes in
+  app/layout.tsx instead of this file, so there's exactly one place
+  that controls it.
+*/

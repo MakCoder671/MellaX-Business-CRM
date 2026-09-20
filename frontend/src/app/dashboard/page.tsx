@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/form";
 import { GettingStarted } from "@/components/GettingStarted";
+import { CalendarWeekView } from "@/components/CalendarWeekView";
 
 // The dashboard "home" page — /dashboard exactly, not /dashboard/clients
 // etc. Just a quick at-a-glance summary: how many clients, and this
@@ -69,6 +70,12 @@ export default function DashboardOverviewPage() {
           </Card>
         </div>
       )}
+
+      {/* Lives right under the stat boxes on purpose — Operating Hours
+          (Settings) is what shapes this view (closed days show as
+          "Off"), so keeping it on the same page they're most likely to
+          check daily beats burying it behind a separate nav item. */}
+      <CalendarWeekView />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 from common.views import TenantScopedModelViewSet
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -9,6 +10,24 @@ from .serializers import AppointmentSerializer, BusinessHoursSerializer, Calenda
 class CalendarViewSet(TenantScopedModelViewSet):
     queryset = Calendar.objects.all()
     serializer_class = CalendarSerializer
+
+    @action(detail=False, methods=["get"])
+    def default(self, request):
+        """
+        GET /api/scheduling/calendars/default/ — v1 is "single/default
+        calendar" per the plan doc (multiple staff/room calendars are a
+        Plus feature for later), so instead of making the frontend deal
+        with "create a calendar" as its own setup step, this just hands
+        back the account's one calendar, creating it the first time
+        anyone asks — same lazy-creation pattern as the landing page
+        (see landingpages/views.py's MyLandingPageView).
+        """
+        calendar = Calendar.objects.for_account(request.user).first()
+        if calendar is None:
+            calendar = Calendar.objects.create(
+                business_account=request.user, name="Calendar", type=Calendar.TYPE_OWNER
+            )
+        return Response(CalendarSerializer(calendar).data)
 
 
 class AppointmentViewSet(TenantScopedModelViewSet):
@@ -43,7 +62,17 @@ class BusinessHoursView(APIView):
         # a fresh account we've never touched before.
         existing = {bh.day_of_week: bh for bh in BusinessHours.objects.filter(business_account=request.user)}
         missing = [
-            BusinessHours(business_account=request.user, day_of_week=day, is_open=day < 5)  # day < 5 -> Mon(0) through Fri(4) are open by default
+            BusinessHours(
+                business_account=request.user,
+                day_of_week=day,
+                is_open=day < 5,  # day < 5 -> Mon(0) through Fri(4) are open by default
+                # An open day needs actual hours, not just an is_open flag
+                # — leaving these null on a day marked open is exactly the
+                # bug that made the Calendar show every day as "Off"
+                # regardless of is_open (see CalendarWeekView.tsx).
+                open_time="09:00:00" if day < 5 else None,
+                close_time="17:00:00" if day < 5 else None,
+            )
             for day in range(7)
             if day not in existing
         ]

@@ -42,7 +42,23 @@ export function OperatingHoursSection() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    apiFetch<BusinessHour[]>("/api/scheduling/business-hours/").then(setHours);
+    apiFetch<BusinessHour[]>("/api/scheduling/business-hours/").then((fetched) => {
+      // The time inputs below show "09:00"/"17:00" as a fallback for a
+      // day that's open but has no times set yet — but that fallback
+      // only lived in the JSX before, never in this component's actual
+      // state. That meant clicking Save without touching a single time
+      // field sent `null` times to the backend while the screen looked
+      // like it had real hours on it. Filling the real defaults in here,
+      // right after loading, means what's on screen always matches what
+      // Save will actually send.
+      setHours(
+        fetched.map((day) =>
+          day.is_open
+            ? { ...day, open_time: day.open_time ?? "09:00:00", close_time: day.close_time ?? "17:00:00" }
+            : day
+        )
+      );
+    });
   }, []);
 
   function updateDay(dayOfWeek: number, patch: Partial<BusinessHour>) {
@@ -87,7 +103,16 @@ export function OperatingHoursSection() {
                   <input
                     type="checkbox"
                     checked={day.is_open}
-                    onChange={(e) => updateDay(day.day_of_week, { is_open: e.target.checked })}
+                    onChange={(e) =>
+                      updateDay(day.day_of_week, {
+                        is_open: e.target.checked,
+                        // Same fallback as when first loading (see the
+                        // useEffect above) — flipping a day open should
+                        // never leave it with null times either.
+                        open_time: e.target.checked ? day.open_time ?? "09:00:00" : day.open_time,
+                        close_time: e.target.checked ? day.close_time ?? "17:00:00" : day.close_time,
+                      })
+                    }
                   />
                   {dayLabel(day.day_of_week)}
                 </label>
