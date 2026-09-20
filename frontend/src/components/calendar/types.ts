@@ -17,5 +17,6 @@ export type Appointment = {
   id: number;
   client: number;
   datetime: string; // ISO datetime string
+  duration_minutes: number;
   status: "scheduled" | "completed" | "cancelled";
 };

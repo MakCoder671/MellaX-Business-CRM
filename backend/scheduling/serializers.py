@@ -15,7 +15,7 @@ class CalendarSerializer(serializers.ModelSerializer):
 class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Appointment
-        fields = ["id", "calendar", "client", "datetime", "status", "source", "created_at"]
+        fields = ["id", "calendar", "client", "datetime", "duration_minutes", "status", "source", "created_at"]
         read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):

@@ -50,6 +50,7 @@ class Appointment(TenantScopedModel):
     calendar = models.ForeignKey(Calendar, on_delete=models.CASCADE, related_name="appointments")
     client = models.ForeignKey("clients.Client", on_delete=models.CASCADE, related_name="appointments")
     datetime = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField(default=60)  # how long the appointment runs — needed to draw it as a block on the Day view's time grid, not just a single instant
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_SCHEDULED)
     source = models.CharField(max_length=24, choices=SOURCE_CHOICES, default=SOURCE_MANUAL)
 
