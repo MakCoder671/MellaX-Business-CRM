@@ -6,6 +6,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { EBLAST_TEMPLATES } from "@/lib/eblast-templates";
 import { Button, Card, ErrorText } from "@/components/form";
+import { MarketingTabs } from "@/components/MarketingTabs";
 
 // ----------------------------------------------------------------------------
 // The Marketing tab — Basic Plan's e-blast tool. Pick a template (or
@@ -165,8 +166,11 @@ export default function MarketingPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
+      <h1 className="text-xl font-semibold">Marketing</h1>
+      <MarketingTabs />
+
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Marketing</h1>
+        <h2 className="text-lg font-medium">E-blasts</h2>
         <Button onClick={() => setShowCompose((v) => !v)}>
           {showCompose ? "Cancel" : "New e-blast"}
         </Button>
