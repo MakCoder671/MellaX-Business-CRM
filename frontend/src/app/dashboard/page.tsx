@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Card } from "@/components/form";
 import { GettingStarted } from "@/components/GettingStarted";
-import { CalendarMonthView } from "@/components/CalendarMonthView";
+import { Calendar } from "@/components/calendar/Calendar";
 
 // The dashboard "home" page — /dashboard exactly, not /dashboard/clients
 // etc. Just a quick at-a-glance summary: how many clients, and this
@@ -75,7 +75,7 @@ export default function DashboardOverviewPage() {
           (Settings) is what shapes this view (closed days show as
           "Off"), so keeping it on the same page they're most likely to
           check daily beats burying it behind a separate nav item. */}
-      <CalendarMonthView />
+      <Calendar />
     </div>
   );
 }
