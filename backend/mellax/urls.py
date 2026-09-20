@@ -20,4 +20,5 @@ urlpatterns = [
     path("api/scheduling/", include("scheduling.urls")),
     path("api/landing-pages/", include("landingpages.urls")),
     path("api/reports/", include("reports.urls")),
+    path("api/marketing/", include("marketing.urls")),
 ]
