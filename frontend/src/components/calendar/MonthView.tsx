@@ -5,8 +5,17 @@ import { useState } from "react";
 import { Button } from "@/components/form";
 
 import { AddAppointmentForm } from "./AddAppointmentForm";
-import { appointmentsOn, clientName, isClosedDay, sameDay } from "./helpers";
-import type { Appointment, BusinessHour, Client } from "./types";
+import {
+  appointmentChipClasses,
+  appointmentStatusIcon,
+  appointmentsOn,
+  clientName,
+  formatDuration,
+  isClosedDay,
+  sameDay,
+  serviceName,
+} from "./helpers";
+import type { Appointment, BusinessHour, Client, Service } from "./types";
 
 // ----------------------------------------------------------------------------
 // The month grid — a density overview, not a full-detail view (that's
@@ -39,13 +48,19 @@ export function MonthView({
   hours,
   appointments,
   clients,
+  services,
   onChanged,
+  onClientAdded,
+  onSelectAppointment,
 }: {
   calendarId: number;
   hours: BusinessHour[];
   appointments: Appointment[];
   clients: Client[];
+  services: Service[];
   onChanged: () => void;
+  onClientAdded: () => void;
+  onSelectAppointment: (appointment: Appointment) => void;
 }) {
   const [viewMonth, setViewMonth] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -64,7 +79,7 @@ export function MonthView({
         <div className="flex items-center gap-3">
           <button
             onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
           >
             ←
           </button>
@@ -74,13 +89,13 @@ export function MonthView({
               setViewMonth(now);
               setSelectedDate(now);
             }}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
           >
             Today
           </button>
           <button
             onClick={() => setViewMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
-            className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+            className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
           >
             →
           </button>
@@ -88,10 +103,14 @@ export function MonthView({
       </div>
 
       {/* The grid itself: 7 weekday headers, then 6 weeks of 7 day-cells.
-          A single CSS grid with 7 columns handles both rows at once. */}
-      <div className="mt-4 grid grid-cols-7 gap-px overflow-hidden rounded-md border border-gray-200 bg-gray-200 text-xs">
+          A single CSS grid with 7 columns handles both rows at once -
+          the 1px gap (gap-px) shows the grid's own background color
+          through it, which is what actually draws "the lines" between
+          cells, so tinting that background is what colors the whole
+          grid's line-work at once. */}
+      <div className="mt-4 grid grid-cols-7 gap-px overflow-hidden rounded-md border border-[var(--cal-600,#059669)]/25 bg-[var(--cal-600,#059669)]/20 text-xs">
         {WEEKDAY_HEADERS.map((day) => (
-          <div key={day} className="bg-gray-50 p-1.5 text-center font-medium text-gray-500">
+          <div key={day} className="bg-[var(--cal-50,#ecfdf5)] p-1.5 text-center font-medium text-gray-500">
             {day}
           </div>
         ))}
@@ -111,23 +130,42 @@ export function MonthView({
                 setShowAddForm(false);
               }}
               className={`flex h-20 flex-col items-start p-1.5 text-left transition-colors ${
-                isSelected ? "bg-emerald-50 ring-1 ring-inset ring-emerald-500" : "bg-white hover:bg-gray-50"
+                isSelected
+                  ? "bg-[var(--cal-50,#ecfdf5)] ring-1 ring-inset ring-[var(--cal-500,#10b981)]"
+                  : "bg-white hover:bg-gray-50"
               } ${!inCurrentMonth ? "opacity-40" : ""} ${closed && inCurrentMonth ? "bg-gray-50" : ""}`}
             >
               <span
                 className={`flex h-5 w-5 items-center justify-center rounded-full ${
-                  isToday ? "bg-emerald-600 font-medium text-white" : "text-gray-700"
+                  isToday ? "cal-accent-bg font-medium" : "text-gray-700"
                 }`}
               >
                 {date.getDate()}
               </span>
               <div className="mt-1 w-full space-y-0.5 overflow-hidden">
-                {dayAppointments.slice(0, 2).map((appt) => (
-                  <p key={appt.id} className="truncate rounded bg-emerald-100 px-1 text-[10px] text-emerald-800">
-                    {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
-                    {clientName(clients, appt.client)}
-                  </p>
-                ))}
+                {dayAppointments.slice(0, 2).map((appt, index) => {
+                  const service = serviceName(services, appt.service);
+                  return (
+                    // A <p>, not a nested <button> — this chip sits inside
+                    // the day cell's own <button> (for "select this day"),
+                    // and a button can't contain another button. Stopping
+                    // propagation is what keeps a chip click from ALSO
+                    // triggering the day-select underneath it.
+                    <p
+                      key={appt.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectAppointment(appt);
+                      }}
+                      className={`truncate rounded px-1 text-[10px] ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
+                    >
+                      {appointmentStatusIcon(appt.status)}
+                      {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
+                      {clientName(clients, appt.client)}
+                      {service && ` · ${service}`}
+                    </p>
+                  );
+                })}
                 {dayAppointments.length > 2 && (
                   <p className="px-1 text-[10px] text-gray-500">+{dayAppointments.length - 2} more</p>
                 )}
@@ -160,13 +198,34 @@ export function MonthView({
             {isClosedDay(hours, selectedDate) ? "Closed all day — nothing to book." : "Nothing booked this day."}
           </p>
         ) : (
-          <ul className="mt-2 space-y-1">
-            {selectedDayAppointments.map((appt) => (
-              <li key={appt.id} className="flex items-center justify-between rounded-md bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800">
-                <span>{clientName(clients, appt.client)}</span>
-                <span>{new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</span>
-              </li>
-            ))}
+          <ul className="mt-2 space-y-1.5">
+            {selectedDayAppointments.map((appt, index) => {
+              const service = serviceName(services, appt.service);
+              return (
+                <li key={appt.id}>
+                  {/* Name, service, and duration each on their own line
+                      (not squeezed onto one row with the time) - this
+                      list has plenty of room, so the name gets sized and
+                      weighted like a small heading and everything below
+                      it reads as a clear, organized hierarchy instead of
+                      one run-on line. */}
+                  <button
+                    onClick={() => onSelectAppointment(appt)}
+                    className={`flex w-full flex-col gap-0.5 rounded-md px-3 py-2 text-left ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
+                  >
+                    <span className="text-sm font-bold sm:text-base">
+                      {appointmentStatusIcon(appt.status)}
+                      {clientName(clients, appt.client)}
+                    </span>
+                    {service && <span className="text-sm">{service}</span>}
+                    <span className="text-xs">
+                      {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} ·{" "}
+                      {formatDuration(appt.duration_minutes)}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -175,7 +234,9 @@ export function MonthView({
             <AddAppointmentForm
               calendarId={calendarId}
               clients={clients}
+              services={services}
               date={selectedDate}
+              onClientAdded={onClientAdded}
               onDone={() => {
                 setShowAddForm(false);
                 onChanged();

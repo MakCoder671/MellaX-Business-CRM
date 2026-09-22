@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Client
+from .models import Client, ClientNote
 
 # ----------------------------------------------------------------------------
 # A ModelSerializer auto-generates most of its behavior from the model —
@@ -26,7 +26,7 @@ class ClientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Client
-        fields = ["id", "first_name", "last_name", "full_name", "email", "phone", "notes", "created_at", "updated_at"]
+        fields = ["id", "first_name", "last_name", "full_name", "email", "phone", "address", "created_at", "updated_at"]
         # These come back in every response, but the frontend can't set
         # them directly — "id" is assigned by the database, and the two
         # timestamps are managed automatically by the model (auto_now_add
@@ -39,9 +39,16 @@ class ClientSerializer(serializers.ModelSerializer):
         # already required above; this is the "at least one contact
         # method" half of that rule. Falls back to the existing instance's
         # values on a partial update, so a PATCH that only touches, say,
-        # `notes` doesn't spuriously fail this check.
+        # `address` doesn't spuriously fail this check.
         email = attrs.get("email", getattr(self.instance, "email", ""))
         phone = attrs.get("phone", getattr(self.instance, "phone", ""))
         if not email and not phone:
             raise serializers.ValidationError("Enter at least an email or a phone number.")
         return attrs
+
+
+class ClientNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClientNote
+        fields = ["id", "client", "text", "is_popup", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]

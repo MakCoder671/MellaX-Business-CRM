@@ -6,6 +6,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 import { apiFetch, setToken } from "./api";
+import { applyTheme, type AccentPresetId, type BackgroundPresetId } from "./themePresets";
 
 // ----------------------------------------------------------------------------
 // This file sets up "who is currently logged in" as global state that any
@@ -28,9 +29,14 @@ export type Account = {
   // Branding — `logo` is a full URL once uploaded (e.g.
   // "http://127.0.0.1:8001/media/logos/xyz.png"), or null until then.
   logo: string | null;
+  // Theme — pre-made preset ids, see src/lib/themePresets.ts for what
+  // each one actually looks like.
+  theme_accent: AccentPresetId;
+  theme_background: BackgroundPresetId;
   // Calendar Settings
   allow_double_booking: boolean;
   default_calendar_view: "day" | "week" | "month";
+  calendar_accent: AccentPresetId;
   // Invoice Settings
   service_tax_percent: string; // Django's DecimalField serializes as a string, e.g. "8.50" — keeps the exact value instead of floating-point rounding
   product_tax_percent: string;
@@ -91,6 +97,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshAccount().finally(() => setLoading(false));
   }, [refreshAccount]);
+
+  // Re-applies theme CSS variables every time the account changes (first
+  // load, login, or a save from the Theme/Calendar settings tabs) - not
+  // logged in yet just means "default theme," which applyTheme already
+  // falls back to on its own.
+  useEffect(() => {
+    applyTheme(account ?? {});
+  }, [account]);
 
   const login = useCallback(async (email: string, password: string) => {
     const result = await apiFetch<{ token: string; account: Account }>(

@@ -1,7 +1,7 @@
 from common.views import TenantScopedModelViewSet
 
-from .models import Client
-from .serializers import ClientSerializer
+from .models import Client, ClientNote
+from .serializers import ClientNoteSerializer, ClientSerializer
 
 # ----------------------------------------------------------------------------
 # This is about as small as a ViewSet gets — because all the real logic
@@ -23,3 +23,17 @@ from .serializers import ClientSerializer
 class ClientViewSet(TenantScopedModelViewSet):
     queryset = Client.objects.all()  # DRF needs this to figure out the model; get_queryset() actually filters it
     serializer_class = ClientSerializer
+
+
+class ClientNoteViewSet(TenantScopedModelViewSet):
+    queryset = ClientNote.objects.all()
+    serializer_class = ClientNoteSerializer
+
+    def get_queryset(self):
+        # The Notes tab on a client's profile calls
+        # GET /api/clients/notes/?client=5 to get just that client's notes.
+        queryset = super().get_queryset()
+        client_id = self.request.query_params.get("client")
+        if client_id:
+            queryset = queryset.filter(client_id=client_id)
+        return queryset

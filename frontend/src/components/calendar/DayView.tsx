@@ -16,8 +16,16 @@ import {
   minutesToPx,
   timeToMinutes,
 } from "./gridHelpers";
-import { appointmentsOn, businessHoursFor } from "./helpers";
-import type { Appointment, BusinessHour, Client } from "./types";
+import {
+  appointmentBlockClasses,
+  appointmentStatusIcon,
+  appointmentsOn,
+  appointmentTextTier,
+  businessHoursFor,
+  formatDuration,
+  serviceName,
+} from "./helpers";
+import type { Appointment, BusinessHour, Client, Service } from "./types";
 
 // ----------------------------------------------------------------------------
 // A real time-grid day view — per Mako: people need to actually SEE
@@ -49,7 +57,7 @@ function DayNav({
     <div className="flex items-center gap-3">
       <button
         onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1))}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
       >
         ←
       </button>
@@ -58,13 +66,13 @@ function DayNav({
       </h3>
       <button
         onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1))}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
       >
         →
       </button>
       <button
         onClick={() => setDate(new Date())}
-        className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
       >
         Today
       </button>
@@ -77,13 +85,19 @@ export function DayView({
   hours,
   appointments,
   clients,
+  services,
   onChanged,
+  onClientAdded,
+  onSelectAppointment,
 }: {
   calendarId: number;
   hours: BusinessHour[];
   appointments: Appointment[];
   clients: Client[];
+  services: Service[];
   onChanged: () => void;
+  onClientAdded: () => void;
+  onSelectAppointment: (appointment: Appointment) => void;
 }) {
   const [date, setDate] = useState(() => new Date());
   const [addFormTime, setAddFormTime] = useState<string | null>(null); // "HH:MM" of the slot last clicked, or null when the form's closed
@@ -110,12 +124,17 @@ export function DayView({
         {dayAppointments.length > 0 ? (
           <ul className="mt-4 space-y-1.5">
             {dayAppointments.map((appt) => (
-              <li
-                key={appt.id}
-                className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-600"
-              >
-                <span className="font-medium">{clientNameFor(appt.client)}</span>
-                <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime)))}</span>
+              <li key={appt.id}>
+                <button
+                  onClick={() => onSelectAppointment(appt)}
+                  className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-left text-sm text-gray-600 hover:bg-gray-100"
+                >
+                  <span className="font-medium">
+                    {appointmentStatusIcon(appt.status)}
+                    {clientNameFor(appt.client)}
+                  </span>
+                  <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime)))}</span>
+                </button>
               </li>
             ))}
           </ul>
@@ -157,13 +176,15 @@ export function DayView({
       </p>
 
       {addFormTime !== null && (
-        <div className="mt-3 rounded-md border border-gray-200 p-3">
+        <div className="mt-3">
           <AddAppointmentForm
             key={addFormTime} // remounts with a fresh initial time whenever a different slot is clicked — see the note in AddAppointmentForm.tsx
             calendarId={calendarId}
             clients={clients}
+            services={services}
             date={date}
             initialTime={addFormTime}
+            onClientAdded={onClientAdded}
             onDone={() => {
               setAddFormTime(null);
               onChanged();
@@ -181,10 +202,10 @@ export function DayView({
           space appointment blocks start from — is also what stops a
           block from ever visually swallowing the time next to it. */}
       <div
-        className="mt-4 flex overflow-hidden rounded-md border border-gray-300 select-none"
+        className="mt-4 flex overflow-hidden rounded-md border border-[var(--cal-600,#059669)]/25 select-none"
         style={{ height: slots.length * SLOT_HEIGHT_PX }}
       >
-        <div className="relative w-16 shrink-0 bg-gray-50">
+        <div className="relative w-16 shrink-0 bg-[var(--cal-50,#ecfdf5)]">
           {/* Each label sits in its own 30-minute-tall row (flex-centered,
               not floated text with a translate hack) — that's what keeps
               every label lined up evenly regardless of whether it wraps.
@@ -196,7 +217,7 @@ export function DayView({
             .map((minutes) => (
               <div
                 key={minutes}
-                className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-gray-300 pr-2 text-[11px] font-medium text-gray-500"
+                className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-[var(--cal-600,#059669)]/25 pr-2 text-[11px] font-medium text-gray-500"
                 style={{
                   top: minutesToPx(minutes, rangeStart),
                   height: SLOT_HEIGHT_PX * 2,
@@ -206,7 +227,7 @@ export function DayView({
               </div>
             ))}
         </div>
-        <div className="w-px shrink-0 bg-gray-300" />{/* the actual divider between the time gutter and the schedule — a real element, not just a border, so it never gets clipped by rounded corners or antialiasing the way a border sometimes can */}
+        <div className="w-px shrink-0 bg-[var(--cal-600,#059669)]/25" />{/* the actual divider between the time gutter and the schedule — a real element, not just a border, so it never gets clipped by rounded corners or antialiasing the way a border sometimes can */}
 
         <div className="relative flex-1">
           {slots.map((minutes) => {
@@ -215,29 +236,84 @@ export function DayView({
               <button
                 key={minutes}
                 onClick={() => setAddFormTime(minutesToHHMM(minutes))}
-                className={`absolute inset-x-0 hover:bg-emerald-50/60 ${
-                  isHourOrHalf ? "border-t border-gray-200" : "border-t border-dashed border-gray-100"
+                className={`absolute inset-x-0 hover:bg-[var(--cal-50,#ecfdf5)]/60 ${
+                  isHourOrHalf ? "border-t border-[var(--cal-600,#059669)]/15" : "border-t border-dashed border-[var(--cal-600,#059669)]/8"
                 }`}
                 style={{ top: minutesToPx(minutes, rangeStart), height: SLOT_HEIGHT_PX }}
               />
             );
           })}
 
-          {dayAppointments.map((appt) => {
+          {dayAppointments.map((appt, index) => {
             const start = minutesSinceMidnight(new Date(appt.datetime));
             const top = minutesToPx(start, rangeStart);
             const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
+            const alternate = index % 2 === 1;
+            const service = serviceName(services, appt.service);
+            const icon = appointmentStatusIcon(appt.status);
+            const name = clientNameFor(appt.client);
+            const time = minutesToLabel(start);
+            // Name, service, and duration each get their own line, sized
+            // like a small heading on top (not a literal <h2>/<h3> — these
+            // buttons sit inside a calendar grid, not page structure, and
+            // one per appointment would wreck screen-reader heading
+            // navigation) - but ONLY when the block is actually tall
+            // enough for that. A block's height is a direct function of
+            // the appointment's duration (see gridHelpers.ts), so a
+            // 15-minute appointment simply doesn't have the room a
+            // 60-minute one does - rather than sizing for the tall case
+            // and letting overflow-hidden silently clip whatever doesn't
+            // fit on a short one, the tier picks smaller text and fewer,
+            // combined lines so everything stays visible either way.
+            const tier = appointmentTextTier(appt.duration_minutes);
             return (
-              <div
+              <button
                 key={appt.id}
-                className="absolute left-1 right-1 overflow-hidden rounded-md border border-emerald-700 bg-emerald-500 px-2 py-1 text-xs text-white shadow-sm"
-                style={{ top, height }}
+                onClick={() => onSelectAppointment(appt)}
+                className={`absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-0.5 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
+                style={{ top: top + 1, height: Math.max(height - 2, 4) }}
               >
-                <p className="truncate font-medium">{clientNameFor(appt.client)}</p>
-                <p className="truncate text-emerald-50">
-                  {minutesToLabel(start)} · {appt.duration_minutes} min
-                </p>
-              </div>
+                {tier === "tight" ? (
+                  <p className="truncate text-[10px] font-bold leading-tight">
+                    {icon}
+                    {name}
+                    {service && <span className="font-normal"> · {service}</span>}
+                  </p>
+                ) : tier === "compact" ? (
+                  <>
+                    <p className="truncate text-xs font-bold leading-tight">
+                      {icon}
+                      {name}
+                    </p>
+                    <p className="truncate text-[10px] leading-tight">
+                      {service ? `${service} · ` : ""}
+                      {formatDuration(appt.duration_minutes)}
+                    </p>
+                  </>
+                ) : tier === "cozy" ? (
+                  <>
+                    <p className="truncate text-xs font-bold leading-tight">
+                      {icon}
+                      {name}
+                    </p>
+                    {service && <p className="truncate text-[11px] leading-tight">{service}</p>}
+                    <p className="truncate text-[10px] leading-tight">
+                      {time} · {formatDuration(appt.duration_minutes)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="truncate text-sm font-bold leading-tight sm:text-base">
+                      {icon}
+                      {name}
+                    </p>
+                    {service && <p className="truncate text-xs leading-tight">{service}</p>}
+                    <p className="truncate text-xs leading-tight">
+                      {time} · {formatDuration(appt.duration_minutes)}
+                    </p>
+                  </>
+                )}
+              </button>
             );
           })}
         </div>

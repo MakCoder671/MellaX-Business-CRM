@@ -22,7 +22,7 @@ export function Field({
       {label}
       <input
         {...props}
-        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[var(--accent-500,#10b981)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-500,#10b981)]"
       />
     </label>
   );
@@ -41,7 +41,12 @@ export function Button({
 } & ButtonHTMLAttributes<HTMLButtonElement> &
   LabelHTMLAttributes<never>) {
   const styles = {
-    primary: "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-emerald-300",
+    // accent-bg (see globals.css) rather than literal Tailwind color
+    // classes - lets this one variant reflect whatever "software color"
+    // preset is picked in Settings > Theme, gradient presets included.
+    // It also sets its own text color (a preset like Amber needs dark
+    // text, not white), so no text-* class here.
+    primary: "accent-bg",
     secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
     danger: "bg-red-600 text-white hover:bg-red-700",
   };

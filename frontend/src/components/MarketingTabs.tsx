@@ -31,7 +31,9 @@ export function MarketingTabs() {
             key={tab.href}
             href={tab.href}
             className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium ${
-              active ? "border-emerald-600 text-emerald-700" : "border-transparent text-gray-500 hover:text-gray-700"
+              active
+                ? "border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             }`}
           >
             {tab.label}

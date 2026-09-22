@@ -1,10 +1,12 @@
 import { BookingRulesSection } from "@/components/settings/BookingRulesSection";
+import { CalendarColorSection } from "@/components/settings/CalendarColorSection";
 import { OperatingHoursSection } from "@/components/settings/OperatingHoursSection";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
 
 // The "Calendar" settings tab — everything that shapes how the dashboard
-// Calendar widget behaves: which hours it's bookable (Operating Hours)
-// and the booking rules layered on top (double booking, default view).
+// Calendar widget behaves and looks: which hours it's bookable (Operating
+// Hours), the booking rules layered on top (double booking, default
+// view), and now its own color (Calendar Color).
 
 export default function CalendarSettingsPage() {
   return (
@@ -13,6 +15,7 @@ export default function CalendarSettingsPage() {
       <SettingsTabs />
       <OperatingHoursSection />
       <BookingRulesSection />
+      <CalendarColorSection />
     </div>
   );
 }

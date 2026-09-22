@@ -21,7 +21,7 @@ type Client = {
   full_name: string;
   email: string;
   phone: string;
-  notes: string;
+  address: string;
 };
 
 export default function ClientsPage() {
@@ -59,7 +59,7 @@ export default function ClientsPage() {
     try {
       await apiFetch("/api/clients/", {
         method: "POST",
-        body: { first_name: firstName, last_name: lastName, email, phone, notes: "" },
+        body: { first_name: firstName, last_name: lastName, email, phone },
       });
       // Reset the form back to empty and hide it, then reload the list to
       // show the new client.

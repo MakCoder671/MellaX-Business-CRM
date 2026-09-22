@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
-import { Button, ErrorText } from "@/components/form";
+import { Button, ErrorText, Field } from "@/components/form";
 
-import type { Client } from "./types";
+import { DURATION_OPTIONS, formatDuration } from "./helpers";
+import type { Client, Service } from "./types";
 
 // Shared by DayView, WeekView, and MonthView — one client picker, time
 // picker, and duration picker, always for a date the caller already
@@ -19,48 +20,135 @@ import type { Client } from "./types";
 // state, rather than this component reacting to a changed prop after
 // the fact. That's the idiomatic React way to "reset state when an
 // input changes" instead of a useEffect that calls setState.
+//
+// Laid out as two paired rows — "Who / What" (client, service) then
+// "When / How long" (time, duration) — rather than four same-size boxes
+// in a single flat row. Per Mako: four narrow fields spread thin across
+// a wide row just looked like a strip of unrelated boxes with dead
+// space around them; pairing what actually goes together and letting
+// each field take up real width reads as an intentionally designed
+// form instead. The whole thing owns its own card styling (border,
+// rounded corners, background) now too, instead of relying on whichever
+// plain wrapper div the calling view happened to put around it.
+//
+// "+ New client" (per Mako, for walk-ins who show up without ever being
+// added as a client first): switches the Client field from a dropdown
+// to a small inline name/email/phone form, right here instead of
+// needing a trip to the Clients page and back. On submit, the client is
+// created FIRST, then the appointment is booked for that new client's
+// id — one button, one save. onClientAdded lets the caller (ultimately
+// useCalendarData) refresh its cached client list, so the new client
+// shows up in every OTHER client picker in the app without a page reload.
 
-const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
+const FREQUENCY_OPTIONS: { value: "weekly" | "biweekly" | "monthly"; label: string }[] = [
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Every 2 weeks" },
+  { value: "monthly", label: "Monthly" },
+];
+
+type RecurringResult = {
+  created: unknown[];
+  skipped: { datetime: string; errors: unknown }[];
+};
 
 export function AddAppointmentForm({
   calendarId,
   clients,
+  services,
   date,
   initialTime = "09:00",
+  onClientAdded,
   onDone,
 }: {
   calendarId: number;
   clients: Client[];
+  services: Service[];
   date: Date;
   initialTime?: string; // "HH:MM" — lets DayView's time grid pre-fill the slot someone clicked
+  onClientAdded: () => void;
   onDone: () => void;
 }) {
   const [clientId, setClientId] = useState<number | "">("");
+  const [serviceId, setServiceId] = useState<number | "">(""); // optional — not every quick-added appointment has a service picked yet
   const [time, setTime] = useState(initialTime);
   const [duration, setDuration] = useState(60);
+  const [notes, setNotes] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"weekly" | "biweekly" | "monthly">("weekly");
+  const [occurrences, setOccurrences] = useState(4);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // The new-client mini-form, shown in place of the Client dropdown when open.
+  const [addingClient, setAddingClient] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Same rule as the Clients page's own add-client form (see
+    // clients/serializers.py) — checked here too so a walk-in with a
+    // blank contact field finds out before the whole appointment submit
+    // round-trips, not just this one field.
+    if (addingClient && !newEmail && !newPhone) {
+      setError("Enter at least an email or a phone number for the new client.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // A brand-new client gets created first — the appointment is then
+      // booked against whichever id comes back, new or already-picked.
+      let resolvedClientId = clientId;
+      if (addingClient) {
+        const newClient = await apiFetch<Client>("/api/clients/", {
+          method: "POST",
+          body: { first_name: newFirstName, last_name: newLastName, email: newEmail, phone: newPhone },
+        });
+        resolvedClientId = newClient.id;
+      }
+
       const [hours, minutes] = time.split(":").map(Number);
       const localDatetime = new Date(date);
       localDatetime.setHours(hours, minutes, 0, 0);
 
-      await apiFetch("/api/scheduling/appointments/", {
-        method: "POST",
-        body: {
-          calendar: calendarId,
-          client: clientId,
-          datetime: localDatetime.toISOString(),
-          duration_minutes: duration,
-          status: "scheduled",
-          source: "manual",
-        },
-      });
+      const basePayload = {
+        calendar: calendarId,
+        client: resolvedClientId,
+        service: serviceId || null,
+        datetime: localDatetime.toISOString(),
+        duration_minutes: duration,
+        notes,
+        status: "scheduled",
+        source: "manual",
+      };
+
+      if (isRecurring) {
+        // Every occurrence gets validated independently on the backend
+        // (double-booking included) — a conflicting date is skipped
+        // instead of blocking the whole series, so we surface that back
+        // here rather than treating a partial success as a failure.
+        const result = await apiFetch<RecurringResult>("/api/scheduling/appointments/recurring/", {
+          method: "POST",
+          body: { ...basePayload, frequency, occurrences },
+        });
+        if (result.created.length === 0) {
+          setError("Every date in that series conflicts with an existing appointment — nothing was booked.");
+          return;
+        }
+        if (result.skipped.length > 0) {
+          alert(
+            `${result.created.length} of ${occurrences} appointments booked. ${result.skipped.length} skipped because that time was already taken.`
+          );
+        }
+      } else {
+        await apiFetch("/api/scheduling/appointments/", { method: "POST", body: basePayload });
+      }
+      if (addingClient) onClientAdded();
       onDone();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -70,53 +158,168 @@ export function AddAppointmentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-      <label className="text-sm">
-        Client
-        <select
-          required
-          value={clientId}
-          onChange={(e) => setClientId(Number(e.target.value))}
-          className="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-        >
-          <option value="" disabled>
-            Select
-          </option>
-          {clients.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.full_name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="text-sm">
-        Time
-        <input
-          type="time"
-          required
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          className="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+    <form
+      onSubmit={handleSubmit}
+      className="max-w-xl space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    >
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Who &amp; what</p>
+        {addingClient ? (
+          <div className="mt-2 rounded-md border border-[var(--accent-600,#059669)]/25 bg-[var(--accent-50,#ecfdf5)] p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">New client</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingClient(false);
+                  setNewFirstName("");
+                  setNewLastName("");
+                  setNewEmail("");
+                  setNewPhone("");
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Cancel — pick an existing client instead
+              </button>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <Field label="First name" required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
+              <Field label="Last name" required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
+              <Field label="Email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              <Field label="Phone number" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+            </div>
+          </div>
+        ) : (
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm">
+                Client
+                <select
+                  required
+                  value={clientId}
+                  onChange={(e) => setClientId(Number(e.target.value))}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="" disabled>
+                    Select
+                  </option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => setAddingClient(true)}
+                className="mt-1 text-xs text-[var(--accent-700,#047857)] underline"
+              >
+                + New client
+              </button>
+            </div>
+            <label className="block text-sm">
+              Service
+              <select
+                value={serviceId}
+                onChange={(e) => setServiceId(e.target.value ? Number(e.target.value) : "")}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              >
+                <option value="">None</option>
+                {services.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">When &amp; how long</p>
+        <div className="mt-2 grid grid-cols-2 gap-3">
+          <label className="block text-sm">
+            Time
+            <input
+              type="time"
+              required
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label className="block text-sm">
+            Duration
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            >
+              {DURATION_OPTIONS.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {formatDuration(minutes)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <label className="block text-sm">
+        Notes
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          placeholder="Anything worth remembering about this appointment…"
+          className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-[var(--accent-500,#10b981)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-500,#10b981)]"
         />
       </label>
-      <label className="text-sm">
-        Duration
-        <select
-          value={duration}
-          onChange={(e) => setDuration(Number(e.target.value))}
-          className="mt-1 block rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-        >
-          {DURATION_OPTIONS.map((minutes) => (
-            <option key={minutes} value={minutes}>
-              {minutes < 60 ? `${minutes} min` : `${minutes / 60} hr${minutes > 60 ? "s" : ""}`}
-            </option>
-          ))}
-        </select>
-      </label>
-      <Button type="submit" disabled={submitting}>
-        {submitting ? "Saving…" : "Add"}
-      </Button>
-      <ErrorText>{error}</ErrorText>
+
+      <div className="border-t border-gray-100 pt-3">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
+          Recurring appointment
+        </label>
+        {isRecurring && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              Repeats
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value as "weekly" | "biweekly" | "monthly")}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              >
+                {FREQUENCY_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-sm">
+              Total appointments
+              <input
+                type="number"
+                min={2}
+                max={52}
+                value={occurrences}
+                onChange={(e) => setOccurrences(Number(e.target.value))}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Saving…" : "Add"}
+        </Button>
+        <ErrorText>{error}</ErrorText>
+      </div>
     </form>
   );
 }

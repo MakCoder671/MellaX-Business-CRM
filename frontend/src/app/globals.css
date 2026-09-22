@@ -21,3 +21,70 @@
   app/layout.tsx instead of this file, so there's exactly one place
   that controls it.
 */
+
+/*
+  Theme system (Settings > Theme, Settings > Calendar) - see
+  src/lib/themePresets.ts for where --accent-*, --cal-*, and --app-bg
+  actually get set. This one class exists because a "software color" preset can be
+  a solid hex OR a real CSS gradient (--accent-bg holds either), and
+  Tailwind's `bg-[...]` arbitrary-value utility can't safely tell those
+  apart - a plain CSS rule using the `background` shorthand handles both
+  without that ambiguity. Every primary button in the app goes through
+  this one class (see Button in components/form.tsx), so a theme change
+  updates every button at once.
+
+  `color: var(--accent-on)` rather than assuming white text - a preset
+  like Amber or Sunset is light/bright enough that white text on it
+  fails contrast (or just reads flat instead of popping), so each preset
+  carries its own onColor (see themePresets.ts) instead of every themed
+  surface hardcoding text-white. `--accent-on-shadow` holds a full
+  text-shadow value (a tight dark layer + a wider soft one behind white
+  text, or the light equivalent behind dark text) - per Mako, people
+  should be free to pick any color/gradient they want and the text
+  should just stay bright/crisp regardless, not only in the one exact
+  shade onColor was tuned against.
+*/
+.accent-bg {
+  background: var(--accent-bg, #059669);
+  color: var(--accent-on, #ffffff);
+  text-shadow: var(--accent-on-shadow, 0 1px 1px rgba(0, 0, 0, 0.8), 0 1px 6px rgba(0, 0, 0, 0.5));
+}
+.accent-bg:hover:not(:disabled) {
+  background: var(--accent-700, #047857);
+}
+.accent-bg:disabled {
+  background: var(--accent-300, #6ee7b7);
+}
+
+/* Same idea, for the Calendar widget's own accent (Day/Week/Month toggle,
+   appointment blocks) - kept separate from --accent-* so a business can
+   run a different color for the calendar than for the rest of the app. */
+.cal-accent-bg {
+  background: var(--cal-bg, #059669);
+  color: var(--cal-on, #ffffff);
+  text-shadow: var(--cal-on-shadow, 0 1px 1px rgba(0, 0, 0, 0.8), 0 1px 6px rgba(0, 0, 0, 0.5));
+}
+.cal-accent-bg:hover {
+  background: var(--cal-700, #047857);
+}
+
+/* Appointment blocks (Day/Week views) - same halo, but as its own class
+   since blocks build their bg/color from --cal-500/600 directly (see
+   appointmentBlockClasses in calendar/helpers.ts) rather than going
+   through --cal-bg/.cal-accent-bg. Chips (Month view) don't need this -
+   they're always dark text on a pale tint, already high-contrast on its
+   own regardless of which color family is picked. */
+.cal-block-text {
+  text-shadow: var(--cal-on-shadow, 0 1px 1px rgba(0, 0, 0, 0.8), 0 1px 6px rgba(0, 0, 0, 0.5));
+}
+
+/* The dashboard's themed background (dashboard/layout.tsx's outer shell -
+   sidebar, header, and content all share this one background) is a
+   deliberate visual choice for using the software day to day - it has no
+   business showing up behind a printed invoice, so print always gets
+   plain white regardless of what's picked in Settings > Theme. */
+@media print {
+  .theme-bg {
+    background: white !important;
+  }
+}

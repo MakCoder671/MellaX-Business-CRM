@@ -119,9 +119,13 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
             "address",
             # Branding
             "logo",
+            # Theme
+            "theme_accent",
+            "theme_background",
             # Calendar Settings
             "allow_double_booking",
             "default_calendar_view",
+            "calendar_accent",
             # Invoice Settings
             "service_tax_percent",
             "product_tax_percent",

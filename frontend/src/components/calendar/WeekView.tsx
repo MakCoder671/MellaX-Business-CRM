@@ -14,8 +14,16 @@ import {
   minutesToPx,
   timeToMinutes,
 } from "./gridHelpers";
-import { appointmentsOn, businessHoursFor, startOfWeek } from "./helpers";
-import type { Appointment, BusinessHour, Client } from "./types";
+import {
+  appointmentBlockClasses,
+  appointmentStatusIcon,
+  appointmentsOn,
+  appointmentTextTier,
+  businessHoursFor,
+  serviceName,
+  startOfWeek,
+} from "./helpers";
+import type { Appointment, BusinessHour, Client, Service } from "./types";
 
 // ----------------------------------------------------------------------------
 // The week view — per Mako, this should look like DayView's time grid,
@@ -43,13 +51,19 @@ export function WeekView({
   hours,
   appointments,
   clients,
+  services,
   onChanged,
+  onClientAdded,
+  onSelectAppointment,
 }: {
   calendarId: number;
   hours: BusinessHour[];
   appointments: Appointment[];
   clients: Client[];
+  services: Service[];
   onChanged: () => void;
+  onClientAdded: () => void;
+  onSelectAppointment: (appointment: Appointment) => void;
 }) {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [addForm, setAddForm] = useState<AddFormTarget>(null);
@@ -96,27 +110,27 @@ export function WeekView({
       <div className="flex items-center gap-3">
         <button
           onClick={() => setWeekStart((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
         >
           ←
         </button>
         <h3 className="text-base font-medium">{weekLabel}</h3>
         <button
           onClick={() => setWeekStart((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7))}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
         >
           →
         </button>
         <button
           onClick={() => setWeekStart(startOfWeek(new Date()))}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
         >
           Today
         </button>
       </div>
 
       {addForm && (
-        <div className="mt-3 rounded-md border border-gray-200 p-3">
+        <div className="mt-3">
           <p className="mb-2 text-xs font-medium text-gray-500">
             {addForm.date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </p>
@@ -124,8 +138,10 @@ export function WeekView({
             key={`${addForm.date.toDateString()}-${addForm.time}`} // remounts with fresh values whenever a different day/slot is clicked
             calendarId={calendarId}
             clients={clients}
+            services={services}
             date={addForm.date}
             initialTime={addForm.time}
+            onClientAdded={onClientAdded}
             onDone={() => {
               setAddForm(null);
               onChanged();
@@ -134,19 +150,19 @@ export function WeekView({
         </div>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-md border border-gray-300 select-none">
+      <div className="mt-4 overflow-hidden rounded-md border border-[var(--cal-600,#059669)]/25 select-none">
         {/* Day-name header row — same gutter width + divider as the body
             below, so the day columns line up exactly with their names. */}
-        <div className="flex border-b border-gray-300 bg-gray-50">
+        <div className="flex border-b border-[var(--cal-600,#059669)]/25 bg-[var(--cal-50,#ecfdf5)]">
           <div className="w-16 shrink-0" />
-          <div className="w-px shrink-0 bg-gray-300" />
+          <div className="w-px shrink-0 bg-[var(--cal-600,#059669)]/25" />
           {days.map((date) => {
             const isToday = date.toDateString() === today.toDateString();
             return (
               <div
                 key={date.toDateString()}
-                className={`flex-1 border-r border-gray-200 py-1.5 text-center text-xs font-medium last:border-r-0 ${
-                  isToday ? "bg-emerald-50 text-emerald-700" : "text-gray-600"
+                className={`flex-1 border-r border-[var(--cal-600,#059669)]/15 py-1.5 text-center text-xs font-medium last:border-r-0 ${
+                  isToday ? "bg-[var(--cal-100,#d1fae5)] text-[var(--cal-700,#047857)]" : "text-gray-600"
                 }`}
               >
                 {DAY_ABBR[date.getDay()]} {date.getDate()}
@@ -158,20 +174,20 @@ export function WeekView({
         {/* Body: the same time-label gutter as DayView, then seven
             schedule columns sharing one time axis. */}
         <div className="flex" style={{ height: gridHeight }}>
-          <div className="relative w-16 shrink-0 bg-gray-50">
+          <div className="relative w-16 shrink-0 bg-[var(--cal-50,#ecfdf5)]">
             {slots
               .filter((minutes) => minutes % 30 === 0)
               .map((minutes) => (
                 <div
                   key={minutes}
-                  className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-gray-300 pr-2 text-[11px] font-medium text-gray-500"
+                  className="absolute inset-x-0 flex items-center justify-end whitespace-nowrap border-t border-[var(--cal-600,#059669)]/25 pr-2 text-[11px] font-medium text-gray-500"
                   style={{ top: minutesToPx(minutes, rangeStart), height: SLOT_HEIGHT_PX * 2 }}
                 >
                   {minutesToLabel(minutes)}
                 </div>
               ))}
           </div>
-          <div className="w-px shrink-0 bg-gray-300" />
+          <div className="w-px shrink-0 bg-[var(--cal-600,#059669)]/25" />
 
           {days.map((date) => {
             const businessHour = businessHoursFor(hours, date);
@@ -184,7 +200,7 @@ export function WeekView({
             return (
               <div
                 key={date.toDateString()}
-                className={`relative flex-1 border-r border-gray-200 last:border-r-0 ${isToday ? "bg-emerald-50/30" : ""}`}
+                className={`relative flex-1 border-r border-[var(--cal-600,#059669)]/15 last:border-r-0 ${isToday ? "bg-[var(--cal-50,#ecfdf5)]/30" : ""}`}
               >
                 {!isOpen ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-[11px] text-gray-400">
@@ -214,26 +230,56 @@ export function WeekView({
                         <button
                           key={minutes}
                           onClick={() => setAddForm({ date, time: minutesToHHMM(minutes) })}
-                          className={`absolute inset-x-0 hover:bg-emerald-50/60 ${
-                            isHourOrHalf ? "border-t border-gray-200" : "border-t border-dashed border-gray-100"
+                          className={`absolute inset-x-0 hover:bg-[var(--cal-50,#ecfdf5)]/60 ${
+                            isHourOrHalf
+                              ? "border-t border-[var(--cal-600,#059669)]/15"
+                              : "border-t border-dashed border-[var(--cal-600,#059669)]/8"
                           }`}
                           style={{ top: minutesToPx(minutes, rangeStart), height: SLOT_HEIGHT_PX }}
                         />
                       );
                     })}
 
-                    {dayAppointments.map((appt) => {
+                    {dayAppointments.map((appt, index) => {
                       const start = minutesSinceMidnight(new Date(appt.datetime));
                       const top = minutesToPx(start, rangeStart);
                       const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
+                      const alternate = index % 2 === 1;
+                      const service = serviceName(services, appt.service);
+                      const icon = appointmentStatusIcon(appt.status);
+                      const name = clientNameFor(appt.client);
+                      // Same idea as DayView's tiers - a week column's
+                      // block height is just as duration-proportional as
+                      // a day column's, so a 15-minute appointment here
+                      // is exactly as short on room. A week column is
+                      // narrow regardless of duration though, so there's
+                      // no "spacious" 3-line case here the way DayView
+                      // has - just tight (1 line) vs everything else
+                      // (name bold + service on their own two lines).
+                      const tier = appointmentTextTier(appt.duration_minutes);
                       return (
-                        <div
+                        <button
                           key={appt.id}
-                          className="absolute left-0.5 right-0.5 overflow-hidden rounded border border-emerald-700 bg-emerald-500 px-1 py-0.5 text-[10px] leading-tight text-white shadow-sm"
-                          style={{ top, height }}
+                          onClick={() => onSelectAppointment(appt)}
+                          className={`absolute left-0.5 right-0.5 overflow-hidden rounded border px-1 py-0.5 text-left leading-tight shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
+                          style={{ top: top + 1, height: Math.max(height - 2, 4) }}
                         >
-                          <p className="truncate font-medium">{clientNameFor(appt.client)}</p>
-                        </div>
+                          {tier === "tight" ? (
+                            <p className="truncate text-[9px] font-bold">
+                              {icon}
+                              {name}
+                              {service && <span className="font-normal"> · {service}</span>}
+                            </p>
+                          ) : (
+                            <>
+                              <p className={`truncate font-bold ${tier === "spacious" ? "text-[11px]" : "text-[10px]"}`}>
+                                {icon}
+                                {name}
+                              </p>
+                              {service && <p className="truncate text-[9px]">{service}</p>}
+                            </>
+                          )}
+                        </button>
                       );
                     })}
                   </>

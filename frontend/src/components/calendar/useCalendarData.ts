@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 
-import type { Appointment, BusinessHour, Client } from "./types";
+import type { Appointment, BusinessHour, Client, Service } from "./types";
 
 // ----------------------------------------------------------------------------
 // All three calendar views (Month/Week/Day) need the exact same data:
@@ -19,9 +19,14 @@ export function useCalendarData() {
   const [hours, setHours] = useState<BusinessHour[] | null>(null);
   const [appointments, setAppointments] = useState<Appointment[] | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
 
   const loadAppointments = useCallback((forCalendarId: number) => {
     apiFetch<Appointment[]>(`/api/scheduling/appointments/?calendar=${forCalendarId}`).then(setAppointments);
+  }, []);
+
+  const loadClients = useCallback(() => {
+    apiFetch<Client[]>("/api/clients/").then(setClients);
   }, []);
 
   useEffect(() => {
@@ -30,8 +35,9 @@ export function useCalendarData() {
       loadAppointments(cal.id);
     });
     apiFetch<BusinessHour[]>("/api/scheduling/business-hours/").then(setHours);
-    apiFetch<Client[]>("/api/clients/").then(setClients);
-  }, [loadAppointments]);
+    loadClients();
+    apiFetch<Service[]>("/api/services/").then(setServices);
+  }, [loadAppointments, loadClients]);
 
   const refresh = useCallback(() => {
     if (calendarId !== null) loadAppointments(calendarId);
@@ -42,7 +48,14 @@ export function useCalendarData() {
     hours,
     appointments,
     clients,
+    services,
     loading: hours === null || appointments === null || calendarId === null,
     refresh,
+    // Booking an appointment for a walk-in who isn't a client yet can
+    // create the client right there in the same form (see
+    // AddAppointmentForm's "+ New client" toggle) - this is what lets
+    // that new client actually show up in the picker for the NEXT
+    // appointment booked, without a full page reload.
+    refreshClients: loadClients,
   };
 }

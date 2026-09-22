@@ -28,6 +28,7 @@ type LineItem = {
   quantity: string;
   unit_price: string;
   is_refund_line: boolean;
+  net_amount: number;
 };
 
 type Payment = {
@@ -40,10 +41,14 @@ type Invoice = {
   id: number;
   invoice_number: string;
   client: number;
-  status: "unpaid" | "paid" | "refunded";
+  status: "unpaid" | "paid" | "refunded" | "quote" | "void";
   issued_date: string;
   notes: string;
   tax_amount: string;
+  subtotal: number;
+  discount_amount: number;
+  total_due: number;
+  discount: number | null;
   line_items: LineItem[];
   payment_records: Payment[];
 };
@@ -63,24 +68,28 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
       setInvoice(inv);
       apiFetch<Client>(`/api/clients/${inv.client}/`).then(setClient);
     });
-    apiFetch<Service[]>("/api/services/").then(setServices);
+    // A line item can point at either a service or a product (see
+    // services/models.py) - both lists get combined here so either one's
+    // name resolves correctly.
+    Promise.all([apiFetch<Service[]>("/api/services/"), apiFetch<Service[]>("/api/products/")]).then(
+      ([svc, products]) => setServices([...svc, ...products])
+    );
   }, [id]);
 
   function serviceName(serviceId: number) {
-    return services.find((s) => s.id === serviceId)?.name ?? `Service #${serviceId}`;
+    return services.find((s) => s.id === serviceId)?.name ?? `Item #${serviceId}`;
   }
 
   if (!invoice || !client || !account) {
     return <p className="text-sm text-gray-500">Loading…</p>;
   }
 
-  const lineTotal = invoice.line_items.reduce((sum, li) => sum + Number(li.quantity) * Number(li.unit_price), 0);
-  const total = lineTotal + Number(invoice.tax_amount);
+  const isQuote = invoice.status === "quote";
   const paid = invoice.payment_records.reduce(
     (sum, p) => sum + (p.is_refund ? -Number(p.amount) : Number(p.amount)),
     0
   );
-  const balanceDue = total - paid;
+  const balanceDue = invoice.total_due - paid;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -106,7 +115,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
             {account.phone && <p className="text-sm text-gray-500">{account.phone}</p>}
           </div>
           <div className="text-right">
-            <p className="text-2xl font-semibold text-gray-900">Invoice</p>
+            <p className="text-2xl font-semibold text-gray-900">{isQuote ? "Quote" : "Invoice"}</p>
             <p className="mt-1 text-sm text-gray-500">{invoice.invoice_number}</p>
             <p className="text-sm text-gray-500">{invoice.issued_date}</p>
             <p className="mt-2 text-sm font-medium uppercase text-gray-700">{invoice.status}</p>
@@ -123,7 +132,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
         <table className="mt-8 w-full text-sm">
           <thead>
             <tr className="border-b border-gray-300 text-left text-xs uppercase tracking-wide text-gray-400">
-              <th className="pb-2 font-medium">Service</th>
+              <th className="pb-2 font-medium">Item</th>
               <th className="pb-2 text-right font-medium">Qty</th>
               <th className="pb-2 text-right font-medium">Unit price</th>
               <th className="pb-2 text-right font-medium">Amount</th>
@@ -138,9 +147,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
                 </td>
                 <td className="py-2 text-right text-gray-600">{li.quantity}</td>
                 <td className="py-2 text-right text-gray-600">${Number(li.unit_price).toFixed(2)}</td>
-                <td className="py-2 text-right text-gray-900">
-                  ${(Number(li.quantity) * Number(li.unit_price)).toFixed(2)}
-                </td>
+                <td className="py-2 text-right text-gray-900">${li.net_amount.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -149,24 +156,34 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
         <div className="ml-auto mt-4 w-48 space-y-1 text-sm">
           <div className="flex justify-between text-gray-500">
             <span>Subtotal</span>
-            <span>${lineTotal.toFixed(2)}</span>
+            <span>${invoice.subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-gray-500">
             <span>Tax</span>
             <span>${Number(invoice.tax_amount).toFixed(2)}</span>
           </div>
+          {invoice.discount && (
+            <div className="flex justify-between text-gray-500">
+              <span>Discount</span>
+              <span>-${invoice.discount_amount.toFixed(2)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t border-gray-200 pt-1 font-medium text-gray-900">
             <span>Total</span>
-            <span>${total.toFixed(2)}</span>
+            <span>${invoice.total_due.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Paid</span>
-            <span>${paid.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between font-medium text-gray-900">
-            <span>Balance due</span>
-            <span>${balanceDue.toFixed(2)}</span>
-          </div>
+          {!isQuote && (
+            <>
+              <div className="flex justify-between text-gray-500">
+                <span>Paid</span>
+                <span>${paid.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-medium text-gray-900">
+                <span>Balance due</span>
+                <span>${balanceDue.toFixed(2)}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {(invoice.notes || account.default_invoice_terms) && (

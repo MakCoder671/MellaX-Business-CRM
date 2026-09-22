@@ -5,8 +5,10 @@ import { useState } from "react";
 import { Card } from "@/components/form";
 import { useAuth } from "@/lib/auth-context";
 
+import { AppointmentOverview } from "./AppointmentOverview";
 import { DayView } from "./DayView";
 import { MonthView } from "./MonthView";
+import type { Appointment } from "./types";
 import { useCalendarData } from "./useCalendarData";
 import { WeekView } from "./WeekView";
 
@@ -39,7 +41,8 @@ const VIEW_LABELS: Record<ViewMode, string> = {
 export function Calendar() {
   const { account } = useAuth();
   const [view, setView] = useState<ViewMode>(() => account?.default_calendar_view ?? "month");
-  const { calendarId, hours, appointments, clients, loading, refresh } = useCalendarData();
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const { calendarId, hours, appointments, clients, services, loading, refresh, refreshClients } = useCalendarData();
 
   return (
     <Card className="p-6">
@@ -48,13 +51,13 @@ export function Calendar() {
         {/* A segmented button group, like Month/Week/Day toggles in any
             other calendar app — switching views keeps the same
             underlying data, just displayed differently. */}
-        <div className="flex rounded-md border border-gray-300 p-0.5 text-sm">
+        <div className="flex rounded-md border border-[var(--cal-600,#059669)]/25 p-0.5 text-sm">
           {(Object.keys(VIEW_LABELS) as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setView(mode)}
               className={`rounded px-3 py-1 ${
-                view === mode ? "bg-emerald-600 text-white" : "text-gray-600 hover:bg-gray-50"
+                view === mode ? "cal-accent-bg" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
               {VIEW_LABELS[mode]}
@@ -74,17 +77,54 @@ export function Calendar() {
         ) : (
           <>
             {view === "day" && (
-              <DayView calendarId={calendarId} hours={hours} appointments={appointments} clients={clients} onChanged={refresh} />
+              <DayView
+                calendarId={calendarId}
+                hours={hours}
+                appointments={appointments}
+                clients={clients}
+                services={services}
+                onChanged={refresh}
+                onClientAdded={refreshClients}
+                onSelectAppointment={setSelectedAppointment}
+              />
             )}
             {view === "week" && (
-              <WeekView calendarId={calendarId} hours={hours} appointments={appointments} clients={clients} onChanged={refresh} />
+              <WeekView
+                calendarId={calendarId}
+                hours={hours}
+                appointments={appointments}
+                clients={clients}
+                services={services}
+                onChanged={refresh}
+                onClientAdded={refreshClients}
+                onSelectAppointment={setSelectedAppointment}
+              />
             )}
             {view === "month" && (
-              <MonthView calendarId={calendarId} hours={hours} appointments={appointments} clients={clients} onChanged={refresh} />
+              <MonthView
+                calendarId={calendarId}
+                hours={hours}
+                appointments={appointments}
+                clients={clients}
+                services={services}
+                onChanged={refresh}
+                onClientAdded={refreshClients}
+                onSelectAppointment={setSelectedAppointment}
+              />
             )}
           </>
         )}
       </div>
+
+      {selectedAppointment && (
+        <AppointmentOverview
+          appointment={selectedAppointment}
+          clients={clients}
+          services={services}
+          onClose={() => setSelectedAppointment(null)}
+          onChanged={refresh}
+        />
+      )}
     </Card>
   );
 }

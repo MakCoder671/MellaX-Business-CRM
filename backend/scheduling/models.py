@@ -41,18 +41,55 @@ class Appointment(TenantScopedModel):
     STATUS_SCHEDULED = "scheduled"
     STATUS_COMPLETED = "completed"
     STATUS_CANCELLED = "cancelled"
+    STATUS_NO_SHOW = "no_show"
     STATUS_CHOICES = [
         (STATUS_SCHEDULED, "Scheduled"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_CANCELLED, "Cancelled"),
+        (STATUS_NO_SHOW, "No show"),
     ]
 
     calendar = models.ForeignKey(Calendar, on_delete=models.CASCADE, related_name="appointments")
     client = models.ForeignKey("clients.Client", on_delete=models.CASCADE, related_name="appointments")
+    # Optional on purpose — appointments could already be quick-added from
+    # the calendar without picking a service, and this shouldn't suddenly
+    # break that flow. It's what fills the "what service" column on the
+    # client profile's Appointments tab.
+    service = models.ForeignKey(
+        "services.Service", on_delete=models.SET_NULL, null=True, blank=True, related_name="appointments"
+    )
     datetime = models.DateTimeField()
     duration_minutes = models.PositiveIntegerField(default=60)  # how long the appointment runs — needed to draw it as a block on the Day view's time grid, not just a single instant
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_SCHEDULED)
     source = models.CharField(max_length=24, choices=SOURCE_CHOICES, default=SOURCE_MANUAL)
+    notes = models.TextField(blank=True)  # anything worth remembering about this specific visit — shows on the Appointment Overview when you click a booking on the calendar
+
+    # Ties every appointment generated from one "repeat this weekly/
+    # biweekly/monthly" booking together (see scheduling/views.py's
+    # AppointmentViewSet.recurring) — null for a normal one-off
+    # appointment. Each occurrence is still its own independent row (its
+    # own status, its own invoice) — this is only what lets the calendar
+    # show "part of a recurring series."
+    recurrence_id = models.UUIDField(null=True, blank=True, editable=False)
+
+
+# ----------------------------------------------------------------------------
+# A timestamped log of anything that changes about an appointment after it's
+# first created — reschedules (datetime changed) and status changes. This
+# is what powers the "view appt history" button on the client profile's
+# Appointments tab, so a business can see if/when a time got moved around.
+# Rows get written by AppointmentSerializer.update() (see
+# scheduling/serializers.py); nothing here writes itself.
+# ----------------------------------------------------------------------------
+
+
+class AppointmentHistory(models.Model):
+    appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name="history")
+    change_description = models.CharField(max_length=255)  # e.g. "Rescheduled from Mon 9:00 AM to Tue 2:00 PM" or "Status changed to Completed"
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-changed_at"]
 
 
 class BusinessHours(models.Model):

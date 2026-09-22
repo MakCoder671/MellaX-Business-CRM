@@ -77,11 +77,80 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
 
     # --- Branding (Settings section) ---
     # Shows up on invoices, the public landing page, marketing e-blasts,
-    # and in the dashboard's own sidebar once logged in. Color/theme
-    # options were here too originally (a single accent_color field), but
-    # that's being replaced by a proper Theme tab later — removed rather
-    # than left as a half-used field nothing reads anymore.
+    # and in the dashboard's own sidebar once logged in.
     logo = models.ImageField(upload_to="logos/", null=True, blank=True)
+
+    # --- Theme (Settings > Theme) ---
+    # Deliberately pre-made choices, not a free-form color picker — most
+    # business owners aren't designers, and letting them blend arbitrary
+    # colors just leads to bad-looking (or unreadable) combinations. Each
+    # choice maps to a real set of colors defined once on the frontend
+    # (src/lib/themePresets.ts) — this field just stores WHICH preset, not
+    # the colors themselves, so the actual palette can be tweaked without
+    # a migration.
+    # 14 curated color families — solid and gradient — covering the color
+    # wheel with enough real variety that "way more options" actually
+    # means something, while staying a pick-from-a-list so nothing ends
+    # up an unreadable custom blend. See src/lib/themePresets.ts for the
+    # actual hex values each id maps to.
+    THEME_ACCENT_CHOICES = [
+        ("emerald", "Emerald"),
+        ("teal", "Teal"),
+        ("ocean", "Ocean"),
+        ("lagoon", "Lagoon"),
+        ("indigo", "Indigo"),
+        ("grape", "Grape"),
+        ("twilight", "Twilight"),
+        ("berry", "Berry"),
+        ("rose", "Rose"),
+        ("crimson", "Crimson"),
+        ("sunset", "Sunset"),
+        ("amber", "Amber"),
+        ("slate", "Slate"),
+        ("midnight", "Midnight"),
+    ]
+    # "Buttons" — the app's primary-button color (also used for focus
+    # rings and the little "selected"/active-tab indicators scattered
+    # around Settings, Reports, Marketing, etc). Independent of
+    # calendar_accent below, so a business can mix and match — a purple
+    # button color with a green calendar, say — without the two fighting
+    # each other.
+    theme_accent = models.CharField(max_length=20, choices=THEME_ACCENT_CHOICES, default="emerald")
+
+    # "Background" — the page background behind the dashboard's content.
+    # Three flavors, organized into their own tabs on the frontend: a
+    # flat tint (the palest shade of one of the 14 families above), a
+    # soft two-tone gradient, or a whole illustrated scene ("Design" —
+    # e.g. an actual palm-tree horizon, a sunset) for businesses who want
+    # more personality than a plain color gives. See themePresets.ts.
+    #
+    # The sidebar deliberately does NOT get its own separate color choice
+    # any more — it automatically matches whatever's picked here (see
+    # NAV_MATCH_FOR_BACKGROUND in themePresets.ts), so there's no way to
+    # end up with a sidebar and background that clash.
+    THEME_BACKGROUND_CHOICES = (
+        [("default", "Default")]
+        + [(f"{accent_id}-tint", f"{label} Tint") for accent_id, label in THEME_ACCENT_CHOICES]
+        + [
+            ("ocean", "Ocean Theme"),
+            ("jungle", "Jungle Theme"),
+            ("sunset", "Sunset Theme"),
+            ("berry", "Berry Theme"),
+            ("amber", "Amber Theme"),
+            ("tropical", "Tropical"),
+            ("horizon", "Sunset Horizon"),
+            ("waves", "Ocean Waves"),
+            ("summit", "Mountain Summit"),
+        ]
+    )
+    theme_background = models.CharField(max_length=20, choices=THEME_BACKGROUND_CHOICES, default="default")
+
+    # Same preset list as theme_accent, reused here rather than a second
+    # separate list — it's the same "pick a color family" mechanic, just
+    # applied to a different surface (every colored area of the Calendar
+    # widget: appointment blocks, today's highlight, the selected day,
+    # the Day/Week/Month toggle) instead of the whole app's chrome.
+    calendar_accent = models.CharField(max_length=20, choices=THEME_ACCENT_CHOICES, default="emerald")
 
     # --- Calendar Settings (Settings section) ---
     # Double-booking toggle: off (default) means the backend rejects a new

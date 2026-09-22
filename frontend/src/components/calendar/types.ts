@@ -13,10 +13,22 @@ export type BusinessHour = {
 
 export type Client = { id: number; full_name: string };
 
+export type Service = { id: number; name: string };
+
+export type AppointmentHistoryEntry = {
+  id: number;
+  change_description: string;
+  changed_at: string;
+};
+
 export type Appointment = {
   id: number;
   client: number;
+  service: number | null;
   datetime: string; // ISO datetime string
   duration_minutes: number;
-  status: "scheduled" | "completed" | "cancelled";
+  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  notes: string;
+  recurrence_id: string | null; // shared by every appointment generated from the same "repeat weekly/biweekly/monthly" booking, null for a one-off
+  history: AppointmentHistoryEntry[];
 };

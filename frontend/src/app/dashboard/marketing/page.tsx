@@ -89,7 +89,7 @@ function ComposeForm({ onDone }: { onDone: () => void }) {
               onClick={() => applyTemplate(t.key)}
               className={`rounded-md border p-2 text-left text-sm transition-colors ${
                 templateKey === t.key
-                  ? "border-emerald-600 ring-1 ring-emerald-600"
+                  ? "border-[var(--accent-600,#059669)] ring-1 ring-[var(--accent-600,#059669)]"
                   : "border-gray-300 hover:border-gray-400"
               }`}
             >

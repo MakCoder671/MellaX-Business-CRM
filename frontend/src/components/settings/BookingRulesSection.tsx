@@ -91,7 +91,7 @@ export function BookingRulesSection() {
                 onClick={() => setDefaultView(option.value)}
                 className={`rounded-md border px-3 py-1.5 text-sm ${
                   defaultView === option.value
-                    ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                    ? "border-[var(--accent-600,#059669)] bg-[var(--accent-50,#ecfdf5)] text-[var(--accent-700,#047857)]"
                     : "border-gray-300 text-gray-600 hover:bg-gray-50"
                 }`}
               >

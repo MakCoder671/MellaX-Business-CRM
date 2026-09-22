@@ -32,7 +32,7 @@ class Client(TenantScopedModel):
     last_name = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True)  # blank=True means "optional in forms", not "allowed to be NULL in the DB"
     phone = models.CharField(max_length=32, blank=True)
-    notes = models.TextField(blank=True)
+    address = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         # Controls how a Client shows up in the Django admin and in debug output.
@@ -41,3 +41,23 @@ class Client(TenantScopedModel):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
+
+
+# ----------------------------------------------------------------------------
+# Replaces the old single Client.notes field. A client can now have any
+# number of notes, each added/edited on its own, and each one can
+# individually be flagged as a "popup" note — those are the ones that
+# auto-display in a modal when someone opens the Client Profile page.
+# ----------------------------------------------------------------------------
+
+
+class ClientNote(TenantScopedModel):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="client_notes")
+    text = models.TextField()
+    is_popup = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Note for {self.client.full_name} ({self.created_at:%Y-%m-%d})"
