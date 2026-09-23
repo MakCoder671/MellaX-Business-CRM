@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BarChart3, Boxes, Receipt, Scale, TrendingUp, Users } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 import { Button, Card, Field } from "@/components/form";
+import { PageHeader } from "@/components/PageHeader";
 import { CreateInvoiceModal } from "@/components/invoicing/CreateInvoiceModal";
+import { ProfitLossChart } from "@/components/reports/ProfitLossChart";
+import { ServiceRevenueChart } from "@/components/reports/ServiceRevenueChart";
+import { ClientRevenueChart } from "@/components/reports/ClientRevenueChart";
+import { InvoiceStatusChart } from "@/components/reports/InvoiceStatusChart";
+import { StockLevelsChart } from "@/components/reports/StockLevelsChart";
 
 // Two reports in one page now: the original Profit & Loss view, and (per
 // Mako) what used to be its own "Invoices" nav tab — seeing every
@@ -73,6 +80,17 @@ const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice
 const today = new Date().toISOString().slice(0, 10);
 
 type Tab = "profit-loss" | "by-item" | "by-client" | "invoices" | "inventory";
+
+// Tab labels spell out what each report actually shows instead of the
+// generic "By Service" / "By Client" this used to say — a first-time
+// visitor should be able to tell what they'll see before clicking.
+const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
+  { id: "profit-loss", label: "Profit & Loss", icon: Scale },
+  { id: "by-item", label: "Service Performance", icon: TrendingUp },
+  { id: "by-client", label: "Top Clients", icon: Users },
+  { id: "invoices", label: "Invoice History", icon: Receipt },
+  { id: "inventory", label: "Stock Levels", icon: Boxes },
+];
 
 export default function ReportsPage() {
   const [tab, setTab] = useState<Tab>("profit-loss");
@@ -192,63 +210,29 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Reports</h1>
+      <PageHeader
+        icon={BarChart3}
+        title="Reports"
+        description="Profit & loss, your top performers, and inventory health — all in one place."
+      />
 
-      <div className="flex flex-wrap gap-1 border-b border-gray-200">
-        <button
-          onClick={() => setTab("profit-loss")}
-          className={`px-3 py-2 text-sm font-medium ${
-            tab === "profit-loss"
-              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Profit &amp; Loss
-        </button>
-        <button
-          onClick={() => setTab("by-item")}
-          className={`px-3 py-2 text-sm font-medium ${
-            tab === "by-item"
-              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          By Service
-        </button>
-        <button
-          onClick={() => setTab("by-client")}
-          className={`px-3 py-2 text-sm font-medium ${
-            tab === "by-client"
-              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          By Client
-        </button>
-        <button
-          onClick={() => setTab("invoices")}
-          className={`px-3 py-2 text-sm font-medium ${
-            tab === "invoices"
-              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Invoices
-        </button>
-        <button
-          onClick={() => setTab("inventory")}
-          className={`px-3 py-2 text-sm font-medium ${
-            tab === "inventory"
-              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Inventory
-        </button>
+      <div className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              tab === id ? "bg-white text-[var(--accent-700,#047857)] shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Icon className="h-4 w-4" strokeWidth={2} />
+            {label}
+          </button>
+        ))}
       </div>
 
       {tab === "profit-loss" && (
-        <div className="max-w-lg space-y-6">
+        <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
             Built for tax filing purposes, not tax advice. Consult a professional for filing. Cost of goods, gross
             profit, and tax collected only count invoices that were actually paid (or partially refunded) — not
@@ -256,6 +240,8 @@ export default function ReportsPage() {
           </p>
 
           {dateRangeForm}
+
+          {pnl && <ProfitLossChart pnl={pnl} />}
 
           {pnl && (
             <Card className="divide-y divide-gray-200 p-4 text-sm">
@@ -297,6 +283,8 @@ export default function ReportsPage() {
 
           {dateRangeForm}
 
+          {itemRows !== null && itemRows.length > 0 && <ServiceRevenueChart rows={itemRows} />}
+
           {itemRows === null ? (
             <p className="text-sm text-gray-500">Loading…</p>
           ) : itemRows.length === 0 ? (
@@ -329,13 +317,15 @@ export default function ReportsPage() {
       )}
 
       {tab === "by-client" && (
-        <div className="max-w-lg space-y-6">
+        <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
             Who&apos;s worth the most, sorted by revenue — same date range and paid-invoices basis as Profit &amp;
             Loss.
           </p>
 
           {dateRangeForm}
+
+          {clientRows !== null && clientRows.length > 0 && <ClientRevenueChart rows={clientRows} />}
 
           {clientRows === null ? (
             <p className="text-sm text-gray-500">Loading…</p>
@@ -388,6 +378,12 @@ export default function ReportsPage() {
             </Button>
           </div>
 
+          {invoices !== null && invoices.length > 0 && (
+            <div className="max-w-md">
+              <InvoiceStatusChart invoices={invoices} />
+            </div>
+          )}
+
           {clients.length === 0 && (
             <Card className="p-4 text-sm text-gray-600">
               Add at least one <Link href="/dashboard/clients" className="text-emerald-700 underline">client</Link>{" "}
@@ -438,6 +434,12 @@ export default function ReportsPage() {
             Every product you&apos;re tracking stock for, in one place. Adjust counts or warning
             thresholds here without having to go find each one on the Products page.
           </p>
+
+          {products !== null && products.length > 0 && (
+            <div className="max-w-2xl">
+              <StockLevelsChart products={products} />
+            </div>
+          )}
 
           {products === null ? (
             <p className="text-sm text-gray-500">Loading…</p>
