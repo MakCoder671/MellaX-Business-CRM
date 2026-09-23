@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
+import { Ban, CreditCard, Mail, Pencil, Printer, RotateCcw, Trash2, User, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -426,85 +427,108 @@ export function InvoiceView({
   if (!invoice || !client || !account) return <p className="p-6 text-sm text-gray-500">Loading…</p>;
 
   return (
-    <div className="flex flex-col md:flex-row">
+    <div className="flex flex-col bg-gray-50 md:flex-row">
       {/* Left action rail — PDF-viewer style, rather than a top toolbar.
           Every adjustment to the invoice happens from here: Edit turns
           the read-only document on the right into something you can
           actually change; Record Payment and Refund each open their own
           small popup on top. */}
-      <div className="flex shrink-0 flex-col gap-2 border-b border-gray-200 p-4 md:w-48 md:border-b-0 md:border-r">
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-gray-200 bg-white p-4 md:w-52 md:border-b-0 md:border-r">
         {onClose && (
-          <button onClick={onClose} className="mb-2 self-end text-sm text-gray-500 hover:text-gray-700 md:self-start">
-            ✕ Close
+          <button
+            onClick={onClose}
+            className="mb-3 flex items-center gap-1.5 self-end text-sm text-gray-500 hover:text-gray-700 md:self-start"
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={2} /> Close
           </button>
         )}
         {!locked && (
-          <Button variant="secondary" className="w-full" onClick={() => setEditing((v) => !v)}>
+          <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={() => setEditing((v) => !v)}>
+            {editing ? <X className="h-4 w-4" strokeWidth={2} /> : <Pencil className="h-4 w-4" strokeWidth={2} />}
             {editing ? "Done Editing" : "Edit"}
           </Button>
         )}
         {!locked && !isQuote && (
-          <Button variant="secondary" className="w-full" onClick={() => setShowPaymentForm(true)}>
-            Record Payment
+          <Button
+            variant="secondary"
+            className="flex w-full items-center justify-center gap-2"
+            onClick={() => setShowPaymentForm(true)}
+          >
+            <CreditCard className="h-4 w-4" strokeWidth={2} /> Record Payment
           </Button>
         )}
         {!locked && !isQuote && (
-          <Button variant="secondary" className="w-full" onClick={() => setShowRefundForm(true)}>
-            Refund
-          </Button>
-        )}
-        {!locked && (
-          <Button variant="danger" className="w-full" onClick={handleDelete}>
-            Delete
+          <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={() => setShowRefundForm(true)}>
+            <RotateCcw className="h-4 w-4" strokeWidth={2} /> Refund
           </Button>
         )}
         <Link href={`/dashboard/invoices/${invoice.id}/print`} className="w-full">
-          <Button variant="secondary" className="w-full">
-            Print
+          <Button variant="secondary" className="flex w-full items-center justify-center gap-2">
+            <Printer className="h-4 w-4" strokeWidth={2} /> Print
           </Button>
         </Link>
-        <Button variant="secondary" className="w-full" onClick={handleEmail} disabled={emailing}>
-          {emailing ? "Emailing…" : "Email"}
+        <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={handleEmail} disabled={emailing}>
+          <Mail className="h-4 w-4" strokeWidth={2} /> {emailing ? "Emailing…" : "Email"}
         </Button>
         <Link href={`/dashboard/clients/${client.id}`} className="w-full">
-          <Button variant="secondary" className="w-full">
-            Go to client profile
+          <Button variant="secondary" className="flex w-full items-center justify-center gap-2">
+            <User className="h-4 w-4" strokeWidth={2} /> Client profile
           </Button>
         </Link>
-        {statusMessage && <p className="text-xs text-emerald-700">{statusMessage}</p>}
+        {!locked && (
+          <>
+            <div className="my-1 border-t border-gray-100" />
+            <Button variant="danger" className="flex w-full items-center justify-center gap-2" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4" strokeWidth={2} /> Delete
+            </Button>
+          </>
+        )}
+        {statusMessage && <p className="mt-1 text-xs font-medium text-emerald-700">{statusMessage}</p>}
         <ErrorText>{error}</ErrorText>
       </div>
 
       {/* The invoice itself — letterhead, line items, totals, terms.
-          Read-only PDF-style unless `editing` is on. */}
+          Read-only PDF-style unless `editing` is on. Presented as an
+          actual sheet of "paper" floating on a muted backdrop, the way
+          a real invoice PDF would look in a viewer. */}
       <div className="max-h-[85vh] flex-1 overflow-y-auto p-6">
         {locked && (
-          <div className="mb-4 rounded-md border border-gray-300 bg-gray-50 p-3 text-sm text-gray-600">
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-600">
+            <Ban className="h-4 w-4 shrink-0" strokeWidth={2} />
             This invoice has been voided. It&apos;s kept for the record, but nothing on it can be changed anymore.
           </div>
         )}
 
+        <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
+          <div className="accent-bg h-1.5 w-full" />
+          <div className="p-8">
         <div className="flex items-start justify-between">
           <div>
-            {account.logo && (
+            {account.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={account.logo} alt="" className="mb-3 h-14 w-14 rounded object-cover" />
+              <img src={account.logo} alt="" className="mb-3 h-14 w-14 rounded-lg border border-gray-100 object-cover shadow-sm" />
+            ) : (
+              <div className="accent-bg mb-3 flex h-14 w-14 items-center justify-center rounded-lg text-lg font-semibold">
+                {account.business_name?.charAt(0)?.toUpperCase() ?? "B"}
+              </div>
             )}
             <p className="text-lg font-semibold text-gray-900">{account.business_name}</p>
             {account.address && <p className="text-sm text-gray-500">{account.address}</p>}
             {account.phone && <p className="text-sm text-gray-500">{account.phone}</p>}
           </div>
           <div className="text-right">
-            <p className="text-2xl font-semibold text-gray-900">{isQuote ? "Quote" : "Invoice"}</p>
-            <p className="mt-1 text-sm text-gray-500">{invoice.invoice_number}</p>
+            <p className="font-mono text-2xl font-bold uppercase tracking-tight text-gray-900">
+              {isQuote ? "Quote" : "Invoice"}
+            </p>
+            <p className="mt-1 font-mono text-sm text-gray-500">{invoice.invoice_number}</p>
             <p className="text-sm text-gray-500">{invoice.issued_date}</p>
-            <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium uppercase ${STATUS_STYLES[invoice.status]}`}>
+            <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[invoice.status]}`}>
               {invoice.status}
             </span>
           </div>
         </div>
 
-        <div className="mt-8">
+        <div className="mt-8 rounded-lg bg-gray-50/70 p-3">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Bill to</p>
           <p className="mt-1 font-medium text-gray-900">{client.full_name}</p>
           {client.email && <p className="text-sm text-gray-500">{client.email}</p>}
@@ -513,12 +537,12 @@ export function InvoiceView({
 
         <table className="mt-8 w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-300 text-left text-xs uppercase tracking-wide text-gray-400">
-              <th className="pb-2 font-medium">Item</th>
-              <th className="pb-2 text-right font-medium">Qty</th>
-              <th className="pb-2 text-right font-medium">Price</th>
-              <th className="pb-2 text-right font-medium">Discount</th>
-              <th className="pb-2 text-right font-medium">Amount</th>
+            <tr className="border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <th className="pb-2">Item</th>
+              <th className="pb-2 text-right">Qty</th>
+              <th className="pb-2 text-right">Price</th>
+              <th className="pb-2 text-right">Discount</th>
+              <th className="pb-2 text-right">Amount</th>
               {editing && <th className="pb-2"></th>}
             </tr>
           </thead>
@@ -683,15 +707,15 @@ export function InvoiceView({
               }
 
               return (
-                <tr key={li.id} className="border-b border-gray-100">
-                  <td className="py-2 text-gray-900">
+                <tr key={li.id} className="border-b border-gray-100 last:border-b-0">
+                  <td className="py-2.5 font-medium text-gray-900">
                     {serviceName(li.service)}
-                    {li.is_refund_line && <span className="ml-1 text-amber-600">(refund)</span>}
+                    {li.is_refund_line && <span className="ml-1 font-normal text-amber-600">(refund)</span>}
                   </td>
-                  <td className="py-2 text-right text-gray-600">{li.quantity}</td>
-                  <td className="py-2 text-right text-gray-600">${Number(li.unit_price).toFixed(2)}</td>
-                  <td className="py-2 text-right text-gray-500">{lineDiscountLabel(li) ?? "—"}</td>
-                  <td className="py-2 text-right text-gray-900">${li.net_amount.toFixed(2)}</td>
+                  <td className="py-2.5 text-right text-gray-500">{li.quantity}</td>
+                  <td className="py-2.5 text-right font-mono text-gray-500">${Number(li.unit_price).toFixed(2)}</td>
+                  <td className="py-2.5 text-right text-gray-500">{lineDiscountLabel(li) ?? "—"}</td>
+                  <td className="py-2.5 text-right font-mono font-medium text-gray-900">${li.net_amount.toFixed(2)}</td>
                   {editing && (
                     <td className="py-2 text-right text-xs whitespace-nowrap">
                       <button onClick={() => startEditingLineItem(li)} className="text-emerald-700 hover:underline">
@@ -815,7 +839,7 @@ export function InvoiceView({
           </button>
         )}
 
-        <div className="ml-auto mt-4 w-52 space-y-1 text-sm">
+        <div className="ml-auto mt-4 w-60 space-y-1.5 rounded-lg bg-gray-50/70 p-4 text-sm">
           <div className="flex justify-between text-gray-500">
             <span>Subtotal</span>
             <span>${invoice.subtotal.toFixed(2)}</span>
@@ -830,7 +854,7 @@ export function InvoiceView({
               <span>-${invoice.discount_amount.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t border-gray-200 pt-1 font-medium text-gray-900">
+          <div className="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold text-gray-900">
             <span>Total</span>
             <span>${invoice.total_due.toFixed(2)}</span>
           </div>
@@ -840,7 +864,7 @@ export function InvoiceView({
                 <span>Total paid</span>
                 <span>{money(paid)}</span>
               </div>
-              <div className="flex justify-between font-medium text-gray-900">
+              <div className="flex justify-between rounded-lg bg-white px-2 py-1.5 font-semibold text-gray-900 shadow-sm">
                 <span>Balance due</span>
                 <span className={balanceDue < 0 ? "text-red-600" : ""}>{money(balanceDue)}</span>
               </div>
@@ -861,9 +885,12 @@ export function InvoiceView({
             {invoice.payment_records.length === 0 ? (
               <p className="mt-2 text-sm text-gray-500">No payments recorded yet.</p>
             ) : (
-              <ul className="mt-2 divide-y divide-gray-200 text-sm">
+              <ul className="mt-2 space-y-1.5 text-sm">
                 {invoice.payment_records.map((p) => (
-                  <li key={p.id} className="flex items-center justify-between py-2">
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2"
+                  >
                     {editingPaymentId === p.id ? (
                       <div className="flex flex-1 items-center gap-2">
                         <select
@@ -885,33 +912,45 @@ export function InvoiceView({
                         </button>
                       </div>
                     ) : (
-                      <span>
+                      <span className="flex items-center gap-2 text-gray-700">
+                        <CreditCard className="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
                         {tenderTypes.find((t) => t.id === p.tender_type)?.name ?? "Payment"} · {p.date_received}
                         {p.is_refund && <span className="ml-1 text-amber-600">(refund)</span>}
                         {editing && (
-                          <button onClick={() => startEditingPayment(p)} className="ml-2 text-xs text-emerald-700 hover:underline">
+                          <button onClick={() => startEditingPayment(p)} className="ml-1 text-xs text-emerald-700 hover:underline">
                             Edit tender type
                           </button>
                         )}
                       </span>
                     )}
-                    <span>${Number(p.amount).toFixed(2)}</span>
+                    <span className="font-medium text-gray-900">${Number(p.amount).toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
         )}
+          </div>
+        </div>
       </div>
 
       {/* Record Payment popup */}
       {showPaymentForm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-4">
-          <Card className="w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 px-4 backdrop-blur-sm">
+          <Card className="w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Record a payment</h2>
-              <button onClick={() => setShowPaymentForm(false)} className="text-sm text-gray-500 hover:text-gray-700">
-                ✕
+              <div className="flex items-center gap-3">
+                <div className="accent-bg flex h-9 w-9 items-center justify-center rounded-lg">
+                  <CreditCard className="h-4.5 w-4.5" strokeWidth={2} />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Record a payment</h2>
+              </div>
+              <button
+                onClick={() => setShowPaymentForm(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" strokeWidth={2} />
               </button>
             </div>
             <form onSubmit={handleRecordPayment} className="mt-4 space-y-3">
@@ -945,9 +984,15 @@ export function InvoiceView({
                   className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                 />
               </label>
-              <p className="text-xs text-gray-500">
-                Balance due right now: {money(balanceDue)}
-                {paymentAmount && ` · after this payment: ${money(balanceDue - Number(paymentAmount || 0))}`}
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                Balance due right now: <span className="font-medium text-gray-700">{money(balanceDue)}</span>
+                {paymentAmount && (
+                  <>
+                    {" "}
+                    · after this payment:{" "}
+                    <span className="font-medium text-gray-700">{money(balanceDue - Number(paymentAmount || 0))}</span>
+                  </>
+                )}
               </p>
               <div className="flex items-center gap-3">
                 <Button type="submit" disabled={submittingPayment}>
@@ -962,15 +1007,24 @@ export function InvoiceView({
 
       {/* Refund popup */}
       {showRefundForm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30 px-4">
-          <Card className="w-full max-w-sm p-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 px-4 backdrop-blur-sm">
+          <Card className="w-full max-w-sm rounded-2xl p-6 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Record a refund</h2>
-              <button onClick={() => setShowRefundForm(false)} className="text-sm text-gray-500 hover:text-gray-700">
-                ✕
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-100">
+                  <RotateCcw className="h-4.5 w-4.5 text-amber-700" strokeWidth={2} />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">Record a refund</h2>
+              </div>
+              <button
+                onClick={() => setShowRefundForm(false)}
+                className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" strokeWidth={2} />
               </button>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-gray-500">
               Adds a refund line to the invoice and records the money going back out.
             </p>
             <form onSubmit={handleSubmitRefund} className="mt-4 space-y-3">

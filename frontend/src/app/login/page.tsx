@@ -6,7 +6,9 @@ import { useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText, Field } from "@/components/form";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
+import { ErrorText } from "@/components/form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,40 +37,52 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-semibold">Log in to MellaX</h1>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Log in to pick up right where you left off."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-semibold text-brand hover:text-brand-dark">
+            Create one free
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <AuthField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <AuthField
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <Card className="mt-6 p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field
-            label="Email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Field
-            label="Password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <ErrorText>{error}</ErrorText>
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Logging in…" : "Log in"}
-          </Button>
-        </form>
-      </Card>
+        <div className="flex justify-end">
+          <Link href="/forgot-password" className="text-sm font-medium text-brand hover:text-brand-dark">
+            Forgot password?
+          </Link>
+        </div>
 
-      <div className="mt-4 flex justify-between text-sm text-gray-600">
-        <Link href="/forgot-password" className="text-emerald-700 underline">
-          Forgot password?
-        </Link>
-        <Link href="/signup" className="text-emerald-700 underline">
-          Create an account
-        </Link>
-      </div>
-    </main>
+        <ErrorText>{error}</ErrorText>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? "Logging in…" : "Log in"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

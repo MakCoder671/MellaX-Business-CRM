@@ -1,6 +1,25 @@
 @import "tailwindcss";
 
 /*
+  Marketing/auth palette (landing page, login, signup, etc) — separate
+  from the dashboard's per-account --accent-* theme system above, since
+  the marketing site's colors are a fixed brand choice, not something an
+  account customizes in Settings > Theme. Exactly 5 colors total: one
+  brand green, three neutrals (cream, ink, card), one accent (the
+  marker-yellow highlight used on emphasized words in headlines).
+*/
+@theme {
+  --color-cream: #f2f5e9;
+  --color-card: #fffdf6;
+  --color-ink: #14231c;
+  --color-brand: #0b6e4f;
+  --color-brand-dark: #074a34;
+  --color-brand-light: #dcefe1;
+  --color-highlight: #ffd84d;
+  --font-display: var(--font-space-grotesk);
+}
+
+/*
   This file used to also set body's background/color/font via CSS
   variables that automatically swapped to dark colors based on the
   visitor's OS setting (a leftover from the create-next-app starter
@@ -44,6 +63,19 @@
   should just stay bright/crisp regardless, not only in the one exact
   shade onColor was tuned against.
 */
+/* The highlighter-marker effect on emphasized headline words (see
+   Hero.tsx) - a plain background-color on <mark> looks like a boring
+   text-selection highlight, so this adds the marker's slightly-messy
+   edges and a tiny rotation instead of a razor-straight box. */
+.mark-highlight {
+  background: var(--color-highlight);
+  color: var(--color-ink);
+  padding: 0.05em 0.3em;
+  border-radius: 0.3em 0.6em 0.4em 0.5em;
+  display: inline-block;
+  transform: rotate(-1deg);
+}
+
 .accent-bg {
   background: var(--accent-bg, #059669);
   color: var(--accent-on, #ffffff);

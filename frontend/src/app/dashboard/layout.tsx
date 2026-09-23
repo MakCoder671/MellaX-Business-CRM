@@ -2,6 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  BarChart3,
+  Building2,
+  LayoutDashboard,
+  LogOut,
+  Megaphone,
+  Package,
+  Settings as SettingsIcon,
+  Users,
+  Wrench,
+  type LucideIcon,
+} from "lucide-react";
 
 import { useAuth } from "@/lib/auth-context";
 import { LowStockAlert } from "@/components/LowStockAlert";
@@ -15,21 +27,34 @@ import { Protected } from "@/components/protected";
 // ----------------------------------------------------------------------------
 
 // The sidebar links — adding a new dashboard section later is just
-// adding one line here.
-const NAV = [
-  { href: "/dashboard", label: "Overview" },
-  { href: "/dashboard/clients", label: "Clients" },
-  { href: "/dashboard/services", label: "Services" },
-  { href: "/dashboard/products", label: "Products" },
-  { href: "/dashboard/reports", label: "Reports" },
-  { href: "/dashboard/marketing", label: "Marketing" },
-  { href: "/dashboard/settings", label: "Settings" },
+// adding one line here. Icons are purely decorative labeling (lucide
+// inherits the link's text color via `currentColor`, so the active/hover
+// states below still only need to be set once, on the <Link> itself).
+const NAV: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/clients", label: "Clients", icon: Users },
+  { href: "/dashboard/services", label: "Services", icon: Wrench },
+  { href: "/dashboard/products", label: "Products", icon: Package },
+  { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
+  { href: "/dashboard/marketing", label: "Marketing", icon: Megaphone },
+  { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
   const pathname = usePathname(); // the current URL path, e.g. "/dashboard/clients" — used to highlight the active nav link
   const router = useRouter();
   const { account, logout } = useAuth();
+
+  // Which nav item the CURRENT page belongs to — checked in array order
+  // but skipping Overview's exact-match check until last, since
+  // "/dashboard" is a prefix of every other href too (a naive
+  // pathname.startsWith(item.href) would make every single dashboard
+  // page match Overview first).
+  const activeNav =
+    NAV.find((item) => item.href !== "/dashboard" && pathname.startsWith(item.href)) ??
+    (pathname === "/dashboard" ? NAV[0] : undefined);
+
+  const initial = account?.business_name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   return (
     <Protected>
@@ -58,31 +83,60 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
             this same layout for convenience, but the browser's actual
             print output should show just the invoice, not the app chrome
             around it — the on-screen view is unaffected either way. */}
-        <aside className="w-56 shrink-0 border-r border-gray-200 p-4 print:hidden">
-          <div className="flex items-center gap-2 px-2">
-            {/* The business's own logo, once uploaded (Settings >
-                Branding) — seeing their own branding while using the
-                software, not just "MellaX", is the point here. Falls
-                back to just the wordmark until they add one. */}
-            {account?.logo && (
+        <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200/80 p-3 print:hidden">
+          {/* Workspace header — the business's OWN identity is the
+              primary brand here, not the "MellaX" product name. A
+              bigger logo badge + the actual business_name, styled like
+              a workspace switcher (Linear/Notion/Vercel), links through
+              to Branding so "make this look like us" has an obvious
+              home. The product name moves to a small footer tag further
+              down instead of competing for this spot. */}
+          <Link
+            href="/dashboard/settings"
+            className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-gray-200/80 hover:bg-white"
+          >
+            {account?.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={account.logo} alt="" className="h-6 w-6 rounded object-cover" />
+              <img src={account.logo} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-sm" />
+            ) : (
+              <span
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base font-semibold accent-bg shadow-sm"
+                aria-hidden="true"
+              >
+                {initial === "?" ? <Building2 className="h-5 w-5" /> : initial}
+              </span>
             )}
-            <p className="text-lg font-semibold text-[var(--accent-700,#047857)]">MellaX</p>
-          </div>
-          <nav className="mt-6 space-y-1">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[15px] font-semibold leading-tight text-gray-900">
+                {account?.business_name || "Your business"}
+              </span>
+              <span className="block text-xs text-gray-400">Workspace settings</span>
+            </span>
+          </Link>
+
+          <div className="mx-2 my-3 border-t border-gray-200/80" />
+
+          <nav className="flex flex-col gap-0.5">
             {NAV.map((item) => {
-              const active = pathname === item.href;
+              const active = item.href === activeNav?.href;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block rounded-md border-l-2 px-2 py-1.5 text-sm ${
+                  className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                     active
-                      ? "border-[var(--accent-600,#059669)] bg-black/5 font-medium text-[var(--accent-700,#047857)]"
-                      : "border-transparent text-gray-600 hover:bg-black/5"
+                      ? "bg-[var(--accent-50,#ecfdf5)] font-medium text-[var(--accent-700,#047857)]"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                 >
+                  <span
+                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                      active ? "accent-bg" : "text-gray-400 group-hover:text-gray-600"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={2} />
+                  </span>
                   {item.label}
                 </Link>
               );
@@ -101,7 +155,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               visible. pointer-events-none so it never intercepts clicks
               on whatever nav link happens to sit near the bottom. */}
           <div
-            className="pointer-events-none fixed inset-x-0 bottom-0 h-44 w-56"
+            className="pointer-events-none fixed inset-x-0 bottom-0 h-44 w-60"
             style={{
               backgroundImage: "var(--app-art, none)",
               backgroundPosition: "bottom",
@@ -109,19 +163,34 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               backgroundRepeat: "no-repeat",
             }}
           />
-        </aside>
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-gray-200 px-6 py-3 print:hidden">
-            <span className="text-sm text-gray-500">{account?.business_name}</span>
+          {/* Footer — pinned above the design art (relative + z-10, so
+              it always paints on top of that fixed layer instead of the
+              art bleeding through underneath its text). Business
+              identity already lives in the header above, so this row is
+              just sign-out plus a small, deliberately quiet "MellaX"
+              product tag — the platform is still credited, but it no
+              longer competes with the tenant's own brand for the most
+              prominent spot in their own workspace. */}
+          <div className="relative z-10 mt-auto flex items-center justify-between gap-2 px-1 pt-2">
+            <span className="flex items-center gap-1.5 text-xs font-medium text-gray-400">
+              <Building2 className="h-3.5 w-3.5" strokeWidth={2} />
+              MellaX
+            </span>
             <button
               onClick={() => {
                 logout();
                 router.push("/login");
               }}
-              className="text-sm text-gray-500 hover:text-gray-800"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800"
             >
+              <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
               Log out
             </button>
+          </div>
+        </aside>
+        <div className="flex flex-1 flex-col">
+          <header className="flex items-center justify-between border-b border-gray-200/80 px-6 py-3.5 print:hidden">
+            <h1 className="text-base font-semibold text-gray-900">{activeNav?.label ?? "Dashboard"}</h1>
           </header>
           {/* {children} is where the actual page content (Clients,
               Invoices, etc) gets slotted in — this is the "layout wraps

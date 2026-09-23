@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Receipt, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -244,8 +245,8 @@ export function CreateInvoiceModal({
 
   if (createdInvoiceId !== null) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-8">
-        <Card className="max-h-full w-full max-w-4xl overflow-hidden p-0">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 py-8 backdrop-blur-sm">
+        <Card className="max-h-full w-full max-w-4xl overflow-hidden rounded-2xl p-0 shadow-2xl">
           <InvoiceView invoiceId={createdInvoiceId} onClose={onClose} />
         </Card>
       </div>
@@ -253,50 +254,66 @@ export function CreateInvoiceModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-8">
-      <Card className="max-h-full w-full max-w-2xl overflow-y-auto p-6">
-        <div className="flex items-center justify-between">
-          {clientId ? (
-            <h2 className="text-lg font-semibold">Create Invoice for: {client?.full_name ?? "…"}</h2>
-          ) : (
-            <label className="text-lg font-semibold">
-              Create Invoice for:{" "}
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value ? Number(e.target.value) : "")}
-                className="rounded-md border border-gray-300 px-2 py-1 text-base font-normal"
-              >
-                <option value="" disabled>
-                  Select a client
-                </option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.full_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <button onClick={onClose} className="text-sm text-gray-500 hover:text-gray-700">
-            ✕
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 px-4 py-8 backdrop-blur-sm">
+      <Card className="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl p-0 shadow-2xl">
+        {/* Header - a small brand-tinted icon badge instead of a bare
+            heading, matching the invoice document's own letterhead feel. */}
+        <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="accent-bg flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+              <Receipt className="h-5 w-5" strokeWidth={2} />
+            </div>
+            <div>
+              {clientId ? (
+                <h2 className="text-base font-semibold text-gray-900">
+                  New invoice for {client?.full_name ?? "…"}
+                </h2>
+              ) : (
+                <label className="flex items-center gap-2 text-base font-semibold text-gray-900">
+                  New invoice for
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value ? Number(e.target.value) : "")}
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm font-medium"
+                  >
+                    <option value="" disabled>
+                      Select a client
+                    </option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <p className="text-sm text-gray-500">
+                {client ? client.email || client.phone || "No contact info on file" : "Line items lock in the service's actual price"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
           </button>
         </div>
-        {client && (
-          <p className="mt-1 text-sm text-gray-500">{client.email || client.phone || "No contact info on file"}</p>
-        )}
 
-        <div className="mt-6 space-y-2">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="space-y-2">
           <p className="text-sm font-medium text-gray-700">Line items</p>
           {lineItems.map((item, i) => {
             const service = services.find((s) => s.id === item.service);
             return (
-              <div key={i} className="flex items-end gap-2">
+              <div key={i} className="flex flex-wrap items-end gap-2 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
                 <label className="flex-1 text-sm">
                   Item
                   <select
                     value={item.service}
                     onChange={(e) => updateLineItem(i, { service: e.target.value ? Number(e.target.value) : "" })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
                   >
                     <option value="">Select</option>
                     {/* Split into Services / Products so it's obvious at a glance which is which,
@@ -333,7 +350,7 @@ export function CreateInvoiceModal({
                     step="1"
                     value={item.quantity}
                     onChange={(e) => updateLineItem(i, { quantity: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
                   />
                 </label>
                 <div className="w-20 text-sm">
@@ -342,7 +359,7 @@ export function CreateInvoiceModal({
                       never something typed by hand. The only way to
                       change what a line costs is the discount fields
                       next to it. */}
-                  <p className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-gray-600">
+                  <p className="mt-1 rounded-md border border-gray-200 bg-white px-2 py-1.5 font-medium text-gray-700">
                     {service ? `$${Number(service.price).toFixed(2)}` : "—"}
                   </p>
                 </div>
@@ -355,7 +372,7 @@ export function CreateInvoiceModal({
                     placeholder="0.00"
                     value={item.discountValue}
                     onChange={(e) => updateLineItem(i, { discountValue: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                    className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
                   />
                 </label>
                 <div className="flex overflow-hidden rounded-md border border-gray-300 text-sm">
@@ -363,7 +380,7 @@ export function CreateInvoiceModal({
                     type="button"
                     onClick={() => updateLineItem(i, { discountType: "flat" })}
                     title="Dollar amount off"
-                    className={`px-2 py-1.5 ${item.discountType === "flat" ? "bg-emerald-600 text-white" : "bg-white text-gray-600"}`}
+                    className={`px-2 py-1.5 ${item.discountType === "flat" ? "accent-bg" : "bg-white text-gray-600"}`}
                   >
                     $
                   </button>
@@ -371,7 +388,7 @@ export function CreateInvoiceModal({
                     type="button"
                     onClick={() => updateLineItem(i, { discountType: "percent" })}
                     title="Percent off"
-                    className={`px-2 py-1.5 ${item.discountType === "percent" ? "bg-emerald-600 text-white" : "bg-white text-gray-600"}`}
+                    className={`px-2 py-1.5 ${item.discountType === "percent" ? "accent-bg" : "bg-white text-gray-600"}`}
                   >
                     %
                   </button>
@@ -381,13 +398,15 @@ export function CreateInvoiceModal({
                     immediately as "-$15.00 off" instead of only being
                     discovered once the final total looks wrong. */}
                 {!!item.discountValue && (
-                  <span className="text-xs text-gray-500">= -${lineDiscountAmount(item, services).toFixed(2)} off</span>
+                  <span className="text-xs font-medium text-emerald-700">
+                    = -${lineDiscountAmount(item, services).toFixed(2)} off
+                  </span>
                 )}
                 {lineItems.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeLineItem(i)}
-                    className="mb-1.5 text-sm text-red-600"
+                    className="mb-1.5 text-sm text-red-600 hover:underline"
                   >
                     Remove
                   </button>
@@ -395,7 +414,7 @@ export function CreateInvoiceModal({
               </div>
             );
           })}
-          <button type="button" onClick={addLineItem} className="text-sm text-emerald-700 underline">
+          <button type="button" onClick={addLineItem} className="text-sm font-medium text-emerald-700 hover:underline">
             + Add another line item
           </button>
         </div>
@@ -426,7 +445,10 @@ export function CreateInvoiceModal({
           </label>
         </div>
 
-        <div className="mt-4 ml-auto w-56 space-y-1 border-t border-gray-200 pt-3 text-sm">
+        {/* Totals — a receipt-style card rather than bare rows, so the
+            number someone's about to charge stands out from everything
+            else being configured above it. */}
+        <div className="mt-6 ml-auto w-64 space-y-1.5 rounded-xl border border-gray-100 bg-gray-50/60 p-4 text-sm">
           <div className="flex justify-between text-gray-500">
             <span>Subtotal</span>
             <span>${subtotal.toFixed(2)}</span>
@@ -441,7 +463,7 @@ export function CreateInvoiceModal({
               <span>-${invoiceDiscountAmount.toFixed(2)}</span>
             </div>
           )}
-          <div className="flex justify-between font-medium text-gray-900">
+          <div className="flex justify-between border-t border-gray-200 pt-1.5 text-base font-semibold text-gray-900">
             <span>Total</span>
             <span>${total.toFixed(2)}</span>
           </div>
@@ -451,13 +473,13 @@ export function CreateInvoiceModal({
             <span>Total paid</span>
             <span>{money(livePaid)}</span>
           </div>
-          <div className="flex justify-between font-medium text-gray-900">
+          <div className="flex justify-between rounded-lg bg-white px-2 py-1.5 font-semibold text-gray-900 shadow-sm">
             <span>Balance due</span>
             <span className={liveBalance < 0 ? "text-red-600" : ""}>{money(liveBalance)}</span>
           </div>
         </div>
 
-        <div className="mt-6 border-t border-gray-200 pt-4">
+        <div className="mt-6 rounded-xl border border-gray-100 p-4">
           <p className="text-sm font-medium text-gray-700">Record a payment (optional)</p>
           <p className="mt-1 text-xs text-gray-500">
             Leave this blank to save the invoice with an open balance and collect payment later. Split across more
@@ -465,12 +487,17 @@ export function CreateInvoiceModal({
           </p>
 
           {payments.length > 0 && (
-            <ul className="mt-3 space-y-1">
+            <ul className="mt-3 space-y-1.5">
               {payments.map((p, i) => (
-                <li key={i} className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-1.5 text-sm">
-                  <span>{tenderTypes.find((t) => t.id === p.tenderTypeId)?.name ?? "Payment"}</span>
+                <li
+                  key={i}
+                  className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm"
+                >
+                  <span className="font-medium text-gray-700">
+                    {tenderTypes.find((t) => t.id === p.tenderTypeId)?.name ?? "Payment"}
+                  </span>
                   <span className="flex items-center gap-3">
-                    ${Number(p.amount).toFixed(2)}
+                    <span className="font-medium text-gray-900">${Number(p.amount).toFixed(2)}</span>
                     <button type="button" onClick={() => removePayment(i)} className="text-xs text-red-600 hover:underline">
                       Remove
                     </button>
@@ -480,7 +507,7 @@ export function CreateInvoiceModal({
             </ul>
           )}
 
-          <div className="mt-2 flex items-end gap-3">
+          <div className="mt-3 flex items-end gap-3">
             <label className="flex-1 text-sm">
               Tender type
               <select
@@ -512,8 +539,11 @@ export function CreateInvoiceModal({
             </Button>
           </div>
         </div>
+        </div>
 
-        <div className="mt-6 flex items-center justify-end gap-3 border-t border-gray-200 pt-4">
+        {/* Footer — pinned outside the scrollable body so the primary
+            action is always reachable, even on a long invoice. */}
+        <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4">
           <ErrorText>{error}</ErrorText>
           <Button type="button" variant="secondary" onClick={() => handleSave("quote")} disabled={saving !== null}>
             {saving === "quote" ? "Saving…" : "Quote"}

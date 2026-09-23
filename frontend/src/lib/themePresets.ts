@@ -109,7 +109,15 @@ export type BackgroundPreset = {
   label: string;
   kind: PresetKind;
   css: string; // solid color, gradient, or (for "design") an SVG image layer + gradient fallback
-  swatch: string; // a flatter, cheaper-to-render preview for the picker's little swatch circle
+  // The picker card's preview tile. For solid/gradient this is the same
+  // flat color/gradient, just without the design SVGs' cost. For
+  // "design" it's the SAME artwork as `css`, just center/cover-scaled
+  // instead of bottom/220px - the real dashboard background is a wide
+  // horizon strip meant to fill an entire page width, so rendering it at
+  // that literal size inside a small preview card would crop out
+  // everything except a sliver of sky. Center/cover keeps the actual
+  // trees/birds/boat/mountains visible at preview size instead.
+  swatch: string;
   // "design" presets only - just the bare SVG image (no gradient behind
   // it), rendered a second time pinned to the bottom of the sidebar (see
   // dashboard/layout.tsx). The main content area's copy (in `css` above)
@@ -427,7 +435,7 @@ export const BACKGROUND_PRESETS: Record<BackgroundPresetId, BackgroundPreset> = 
     label: "Tropical",
     kind: "design",
     css: `${svgUrl(TROPICAL_SVG)} bottom / 100% 220px no-repeat, linear-gradient(180deg, #d1fae5 0%, #f8fafc 65%)`,
-    swatch: "linear-gradient(180deg, #6ee7b7, #065f46)",
+    swatch: `${svgUrl(TROPICAL_SVG)} center / cover no-repeat, #d1fae5`,
     artUrl: svgUrl(TROPICAL_SVG),
   },
   horizon: {
@@ -435,7 +443,7 @@ export const BACKGROUND_PRESETS: Record<BackgroundPresetId, BackgroundPreset> = 
     label: "Sunset Horizon",
     kind: "design",
     css: `${svgUrl(HORIZON_SVG)} bottom / 100% 220px no-repeat, linear-gradient(180deg, #fef3c7 0%, #fdf2f8 65%)`,
-    swatch: "linear-gradient(180deg, #fdba74, #e11d48)",
+    swatch: `${svgUrl(HORIZON_SVG)} center / cover no-repeat, #fef3c7`,
     artUrl: svgUrl(HORIZON_SVG),
   },
   waves: {
@@ -443,7 +451,7 @@ export const BACKGROUND_PRESETS: Record<BackgroundPresetId, BackgroundPreset> = 
     label: "Ocean Waves",
     kind: "design",
     css: `${svgUrl(WAVES_SVG)} bottom / 100% 220px no-repeat, linear-gradient(180deg, #e0f2fe 0%, #f8fafc 65%)`,
-    swatch: "linear-gradient(180deg, #7dd3fc, #0284c7)",
+    swatch: `${svgUrl(WAVES_SVG)} center / cover no-repeat, #e0f2fe`,
     artUrl: svgUrl(WAVES_SVG),
   },
   summit: {
@@ -451,7 +459,7 @@ export const BACKGROUND_PRESETS: Record<BackgroundPresetId, BackgroundPreset> = 
     label: "Mountain Summit",
     kind: "design",
     css: `${svgUrl(SUMMIT_SVG)} bottom / 100% 220px no-repeat, linear-gradient(180deg, #ede9fe 0%, #f8fafc 65%)`,
-    swatch: "linear-gradient(180deg, #a5b4fc, #6366f1)",
+    swatch: `${svgUrl(SUMMIT_SVG)} center / cover no-repeat, #ede9fe`,
     artUrl: svgUrl(SUMMIT_SVG),
   },
 };

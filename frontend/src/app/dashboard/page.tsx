@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DollarSign, TrendingUp, UserPlus, Users } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -16,6 +17,44 @@ import { Calendar } from "@/components/calendar/Calendar";
 // old forced onboarding wizard (see components/GettingStarted.tsx).
 
 type ProfitLoss = { revenue: number; refunds: number; net: number; tax_collected: number };
+
+// A quick "Good morning/afternoon/evening" instead of a flat, static
+// greeting — costs nothing (just reads the visitor's own clock) but
+// makes the page feel like it's actually looking back at you.
+function timeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+// Shared look for the three stat tiles below — an icon in a small
+// accent-tinted badge, a label, and the number. Written once so
+// Clients/Revenue/Net can't drift out of sync with each other visually.
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string;
+}) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--accent-100,#d1fae5)] text-[var(--accent-700,#047857)]"
+          aria-hidden="true"
+        >
+          <Icon className="h-4 w-4" strokeWidth={2} />
+        </span>
+        <p className="text-sm font-medium text-gray-500">{label}</p>
+      </div>
+      <p className="mt-3 text-2xl font-semibold tracking-tight text-gray-900">{value}</p>
+    </Card>
+  );
+}
 
 export default function DashboardOverviewPage() {
   const { account } = useAuth();
@@ -37,37 +76,43 @@ export default function DashboardOverviewPage() {
           itself for the logic behind which one shows. */}
       <GettingStarted />
 
-      <h1 className="text-xl font-semibold">
-        Welcome back, {account?.business_name}
-      </h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+          {timeOfDayGreeting()}, {account?.business_name}
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Here&apos;s how your business is doing.
+        </p>
+      </div>
 
       {clientCount === 0 ? (
         // Per the plan doc's "empty states with guidance" rule — a brand
         // new account with nothing in it yet gets a helpful nudge instead
         // of just... blank stat cards showing zeroes everywhere.
-        <Card className="p-6 text-sm text-gray-600">
-          You don&apos;t have any clients yet —{" "}
-          <Link href="/dashboard/clients" className="text-emerald-700 underline">
-            add your first one
-          </Link>
-          .
+        <Card className="flex flex-col items-center gap-3 p-10 text-center">
+          <span
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent-100,#d1fae5)] text-[var(--accent-700,#047857)]"
+            aria-hidden="true"
+          >
+            <UserPlus className="h-5 w-5" strokeWidth={2} />
+          </span>
+          <p className="text-sm text-gray-600">
+            You don&apos;t have any clients yet.{" "}
+            <Link href="/dashboard/clients" className="font-medium text-[var(--accent-700,#047857)] underline">
+              Add your first one
+            </Link>
+            .
+          </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-3 gap-4">
-          <Card className="p-4">
-            <p className="text-xs uppercase text-gray-500">Clients</p>
-            <p className="mt-1 text-2xl font-semibold">{clientCount ?? "…"}</p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs uppercase text-gray-500">Revenue (YTD)</p>
-            <p className="mt-1 text-2xl font-semibold">
-              ${pnl ? pnl.revenue.toFixed(2) : "…"}
-            </p>
-          </Card>
-          <Card className="p-4">
-            <p className="text-xs uppercase text-gray-500">Net (YTD)</p>
-            <p className="mt-1 text-2xl font-semibold">${pnl ? pnl.net.toFixed(2) : "…"}</p>
-          </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard icon={Users} label="Clients" value={clientCount !== null ? String(clientCount) : "…"} />
+          <StatCard
+            icon={DollarSign}
+            label="Revenue (YTD)"
+            value={pnl ? `$${pnl.revenue.toFixed(2)}` : "…"}
+          />
+          <StatCard icon={TrendingUp} label="Net (YTD)" value={pnl ? `$${pnl.net.toFixed(2)}` : "…"} />
         </div>
       )}
 
