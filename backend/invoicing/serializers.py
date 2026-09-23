@@ -31,6 +31,7 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
             "service",
             "quantity",
             "unit_price",
+            "unit_cost",
             "discount_type",
             "discount_value",
             "is_refund_line",
@@ -42,14 +43,17 @@ class InvoiceLineItemSerializer(serializers.ModelSerializer):
         # "locked": whatever's on the invoice always comes straight from
         # Service.price at the moment the line was added, never a
         # hand-typed number. The only way to change what a line actually
-        # costs is discount_type/discount_value — a one-off amount typed
-        # in on the spot (see InvoiceSerializer._build_line_item, which
-        # is what actually fills unit_price in). is_voided/void_note are
-        # also read-only here — they only ever get set through the
+        # costs the CLIENT is discount_type/discount_value — a one-off
+        # amount typed in on the spot (see
+        # InvoiceSerializer._build_line_item, which is what actually
+        # fills unit_price/unit_cost in). unit_cost gets the exact same
+        # locked-snapshot treatment, just for what the line cost the
+        # BUSINESS (see InvoiceLineItem.unit_cost). is_voided/void_note
+        # are also read-only here — they only ever get set through the
         # dedicated add_line_item()/void_line_item() actions on
         # InvoiceViewSet, which is what keeps every change to a line item
         # traceable (see the note on InvoiceLineItem.is_voided).
-        read_only_fields = ["id", "unit_price", "net_amount", "is_voided", "void_note"]
+        read_only_fields = ["id", "unit_price", "unit_cost", "net_amount", "is_voided", "void_note"]
 
     def get_net_amount(self, obj):
         return obj.net_amount()
@@ -150,6 +154,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
     subtotal = serializers.SerializerMethodField()
     discount_amount = serializers.SerializerMethodField()
     total_due = serializers.SerializerMethodField()
+    # Whether this invoice is frozen from further edits — computed live
+    # from Invoice.is_locked() rather than inferred from `status`, since
+    # a Paid invoice locks exactly as hard as an unpaid one once it ages
+    # past 24h but (as of the Void-mislabeling fix) keeps saying "Paid"
+    # forever. The frontend needs this to know when to show a lock badge
+    # without guessing wrong off status alone.
+    is_locked = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -164,6 +175,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "total_due",
             "notes",
             "status",
+            "is_locked",
             "invoice_number",
             "issued_date",
             "created_at",
@@ -186,6 +198,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     def get_total_due(self, obj):
         return obj.total_due()
+
+    def get_is_locked(self, obj):
+        return obj.is_locked()
 
     def validate_client(self, client):
         # Same "don't trust the frontend" check as PaymentRecordSerializer above.
@@ -300,10 +315,15 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return total.quantize(Decimal("0.01"))
 
     def _build_line_item(self, invoice, item):
-        # Prices are locked (see InvoiceLineItemSerializer above) — the
-        # unit price is never taken from the request, always looked up
-        # fresh from the service itself at the moment the line is built.
-        return InvoiceLineItem(invoice=invoice, unit_price=item["service"].price, **item)
+        # Prices (and cost) are locked (see InvoiceLineItemSerializer
+        # above) — never taken from the request, always looked up fresh
+        # from the service itself at the moment the line is built.
+        # service.cost may be None (not every service has a cost set) —
+        # unit_cost just stays null too in that case, same as the field
+        # itself allows.
+        return InvoiceLineItem(
+            invoice=invoice, unit_price=item["service"].price, unit_cost=item["service"].cost, **item
+        )
 
     def _next_invoice_number(self, account):
         # Every account has its own running counter (next_invoice_sequence,

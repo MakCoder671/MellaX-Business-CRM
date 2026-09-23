@@ -19,7 +19,25 @@ type ProfitLoss = {
   revenue: number;
   refunds: number;
   net: number;
+  cogs: number;
+  gross_profit: number;
   tax_collected: number;
+};
+
+type ItemReportRow = {
+  service: number;
+  name: string;
+  quantity: number;
+  revenue: number;
+  cost: number | null; // null (not 0) when nobody's ever set a cost for this service — a real "we don't know," not a real $0
+  profit: number | null;
+};
+
+type ClientReportRow = {
+  client: number;
+  name: string;
+  invoice_count: number;
+  revenue: number;
 };
 
 type Client = { id: number; full_name: string };
@@ -54,7 +72,7 @@ const STATUS_STYLES: Record<Invoice["status"], string> = {
 const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 const today = new Date().toISOString().slice(0, 10);
 
-type Tab = "profit-loss" | "invoices" | "inventory";
+type Tab = "profit-loss" | "by-item" | "by-client" | "invoices" | "inventory";
 
 export default function ReportsPage() {
   const [tab, setTab] = useState<Tab>("profit-loss");
@@ -63,6 +81,11 @@ export default function ReportsPage() {
   const [end, setEnd] = useState(today);
   const [pnl, setPnl] = useState<ProfitLoss | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Same date range as P&L (reusing start/end below), just a separate
+  // fetch per tab — each report is its own endpoint.
+  const [itemRows, setItemRows] = useState<ItemReportRow[] | null>(null);
+  const [clientRows, setClientRows] = useState<ClientReportRow[] | null>(null);
 
   const [clients, setClients] = useState<Client[]>([]);
   const [invoices, setInvoices] = useState<Invoice[] | null>(null);
@@ -121,10 +144,18 @@ export default function ReportsPage() {
     e?.preventDefault();
     setLoading(true);
     try {
-      const data = await apiFetch<ProfitLoss>(
-        `/api/reports/profit-loss/?start=${start}&end=${end}`
-      );
-      setPnl(data);
+      // All three revenue reports share the same date range, so one
+      // "Run report" (available on any of their tabs) refreshes all of
+      // them together — switching tabs never shows stale numbers from a
+      // different period than what's currently selected.
+      const [pnlData, itemData, clientData] = await Promise.all([
+        apiFetch<ProfitLoss>(`/api/reports/profit-loss/?start=${start}&end=${end}`),
+        apiFetch<{ results: ItemReportRow[] }>(`/api/reports/revenue-by-item/?start=${start}&end=${end}`),
+        apiFetch<{ results: ClientReportRow[] }>(`/api/reports/revenue-by-client/?start=${start}&end=${end}`),
+      ]);
+      setPnl(pnlData);
+      setItemRows(itemData.results);
+      setClientRows(clientData.results);
     } finally {
       setLoading(false);
     }
@@ -143,11 +174,27 @@ export default function ReportsPage() {
     return clients.find((c) => c.id === id)?.full_name ?? `#${id}`;
   }
 
+  // Shared by the P&L, By Service, and By Client tabs below — same
+  // date range drives all three reports (see loadReport()), so there's
+  // just one Start/End form to reuse instead of three copies that could
+  // drift out of sync with each other.
+  const dateRangeForm = (
+    <Card className="p-4">
+      <form onSubmit={loadReport} className="flex items-end gap-3">
+        <Field label="Start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+        <Field label="End" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <Button type="submit" disabled={loading}>
+          {loading ? "Loading…" : "Run report"}
+        </Button>
+      </form>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Reports</h1>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex flex-wrap gap-1 border-b border-gray-200">
         <button
           onClick={() => setTab("profit-loss")}
           className={`px-3 py-2 text-sm font-medium ${
@@ -157,6 +204,26 @@ export default function ReportsPage() {
           }`}
         >
           Profit &amp; Loss
+        </button>
+        <button
+          onClick={() => setTab("by-item")}
+          className={`px-3 py-2 text-sm font-medium ${
+            tab === "by-item"
+              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          By Service
+        </button>
+        <button
+          onClick={() => setTab("by-client")}
+          className={`px-3 py-2 text-sm font-medium ${
+            tab === "by-client"
+              ? "border-b-2 border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          By Client
         </button>
         <button
           onClick={() => setTab("invoices")}
@@ -183,18 +250,12 @@ export default function ReportsPage() {
       {tab === "profit-loss" && (
         <div className="max-w-lg space-y-6">
           <p className="text-sm text-gray-500">
-            Built for tax filing purposes, not tax advice. Consult a professional for filing.
+            Built for tax filing purposes, not tax advice. Consult a professional for filing. Cost of goods, gross
+            profit, and tax collected only count invoices that were actually paid (or partially refunded) — not
+            ones still sitting unpaid.
           </p>
 
-          <Card className="p-4">
-            <form onSubmit={loadReport} className="flex items-end gap-3">
-              <Field label="Start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
-              <Field label="End" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-              <Button type="submit" disabled={loading}>
-                {loading ? "Loading…" : "Run report"}
-              </Button>
-            </form>
-          </Card>
+          {dateRangeForm}
 
           {pnl && (
             <Card className="divide-y divide-gray-200 p-4 text-sm">
@@ -210,10 +271,89 @@ export default function ReportsPage() {
                 <span>Net</span>
                 <span>${pnl.net.toFixed(2)}</span>
               </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-500">Cost of goods</span>
+                <span>-${pnl.cogs.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2 font-medium">
+                <span>Gross profit</span>
+                <span>${pnl.gross_profit.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between py-2 text-gray-500">
                 <span>Tax collected</span>
                 <span>${pnl.tax_collected.toFixed(2)}</span>
               </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {tab === "by-item" && (
+        <div className="max-w-2xl space-y-6">
+          <p className="text-sm text-gray-500">
+            Which services and products actually make money, sorted by revenue — same date range and paid-invoices
+            basis as Profit &amp; Loss.
+          </p>
+
+          {dateRangeForm}
+
+          {itemRows === null ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : itemRows.length === 0 ? (
+            <Card className="p-6 text-sm text-gray-600">No paid invoices in this date range yet.</Card>
+          ) : (
+            <Card className="divide-y divide-gray-200">
+              {itemRows.map((row) => (
+                <div key={row.service} className="flex items-center justify-between p-4 text-sm">
+                  <div>
+                    <p className="font-medium">{row.name}</p>
+                    <p className="text-gray-500">{row.quantity} sold</p>
+                  </div>
+                  <div className="text-right">
+                    <p>${row.revenue.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500">
+                      {row.cost === null ? (
+                        "cost not set"
+                      ) : (
+                        <>
+                          -${row.cost.toFixed(2)} cost · ${row.profit?.toFixed(2)} profit
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </Card>
+          )}
+        </div>
+      )}
+
+      {tab === "by-client" && (
+        <div className="max-w-lg space-y-6">
+          <p className="text-sm text-gray-500">
+            Who&apos;s worth the most, sorted by revenue — same date range and paid-invoices basis as Profit &amp;
+            Loss.
+          </p>
+
+          {dateRangeForm}
+
+          {clientRows === null ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : clientRows.length === 0 ? (
+            <Card className="p-6 text-sm text-gray-600">No paid invoices in this date range yet.</Card>
+          ) : (
+            <Card className="divide-y divide-gray-200">
+              {clientRows.map((row) => (
+                <div key={row.client} className="flex items-center justify-between p-4 text-sm">
+                  <div>
+                    <p className="font-medium">{row.name}</p>
+                    <p className="text-gray-500">
+                      {row.invoice_count} invoice{row.invoice_count === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <p>${row.revenue.toFixed(2)}</p>
+                </div>
+              ))}
             </Card>
           )}
         </div>
@@ -234,7 +374,7 @@ export default function ReportsPage() {
                     <option value="">All</option>
                     <option value="paid">Paid</option>
                     <option value="unpaid">Has a balance</option>
-                    {/* Every invoice locks automatically a day after it's created — "Void" is what most invoices end up as, not an edge case. */}
+                    {/* An invoice only ever becomes Void if it aged a day past creation WITHOUT ever getting paid — a paid invoice keeps showing "Paid" forever, even once it's locked from further edits. */}
                     <option value="void">Void</option>
                   </select>
                 </label>

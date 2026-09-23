@@ -14,6 +14,7 @@ class ServiceSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "price",
+            "cost",
             "description",
             "is_taxable",
             "is_product",

@@ -5,8 +5,12 @@ from invoicing.models import VOID_AGE, Invoice
 
 # ----------------------------------------------------------------------------
 # The real "end of day processing" Mako asked for — every invoice on
-# every account that's more than 24 hours old and isn't already Void or
-# a Quote gets its status flipped to Void, permanently locking it.
+# every account that's more than 24 hours old and was NEVER paid gets
+# its status flipped to Void, permanently. A Paid or Refunded invoice
+# locks from further edits just as hard once it ages (Invoice.is_locked()
+# doesn't care about status at all), but keeps its real status forever —
+# see Invoice.sync_void_status() for the full reasoning on why Void only
+# ever means "aged out, never paid" now, not just "old."
 #
 # This ALSO happens automatically, one account at a time, whenever that
 # account's invoices get fetched (see InvoiceViewSet.get_queryset()) —
@@ -21,13 +25,12 @@ from invoicing.models import VOID_AGE, Invoice
 
 
 class Command(BaseCommand):
-    help = "Voids every invoice (across every account) that's more than 24 hours old and not already void or a quote."
+    help = "Voids every invoice (across every account) that's more than 24 hours old and was never paid."
 
     def handle(self, *args, **options):
         cutoff = timezone.now() - VOID_AGE
         updated = (
-            Invoice.objects.exclude(status__in=[Invoice.STATUS_VOID, Invoice.STATUS_QUOTE])
-            .filter(created_at__lte=cutoff)
+            Invoice.objects.filter(status=Invoice.STATUS_UNPAID, created_at__lte=cutoff)
             .update(status=Invoice.STATUS_VOID)
         )
         self.stdout.write(self.style.SUCCESS(f"Voided {updated} invoice(s)."))

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
-import { Ban, CreditCard, Mail, Pencil, Printer, RotateCcw, Trash2, User, X } from "lucide-react";
+import { Ban, CreditCard, Lock, Mail, Pencil, Printer, RotateCcw, Trash2, User, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -31,13 +31,20 @@ import { Button, Card, ErrorText } from "@/components/form";
 // longer accepts on purpose.
 //
 // Delete only exists for the first 24 hours after an invoice is
-// created — after that, the backend automatically locks it AND flips
-// its status to Void on its own (no one has to remember to click
-// anything; see Invoice.sync_void_status() and the
-// "void_expired_invoices" management command). By the time this
-// component ever sees an invoice that old, `status` already says
-// "void", so there's no client-side age math here at all — just the
-// `locked` check below, driven straight off what the backend sent.
+// created — after that, the backend automatically locks it (see
+// Invoice.is_locked() and the "void_expired_invoices" management
+// command). No client-side age math here — `locked` below comes
+// straight from the backend's own `is_locked` field.
+//
+// "Void" itself is a DIFFERENT thing from locked, and it's easy to
+// conflate them: an invoice only ever becomes Void if it aged out
+// having NEVER been paid (see Invoice.sync_void_status()). A Paid or
+// Refunded invoice locks from further edits exactly as hard once it
+// ages, but keeps its real status forever — `locked` can be true on an
+// invoice whose `status` still says "paid," and that's correct, not a
+// bug. Deriving `locked` from `status === "void"` used to be exactly
+// this bug: a paid invoice a day old would stop being treated as
+// locked once status was fixed to stop lying about it.
 // ----------------------------------------------------------------------------
 
 type LineItem = {
@@ -68,6 +75,7 @@ type Invoice = {
   appointment: number | null;
   discount: number | null;
   status: "unpaid" | "paid" | "refunded" | "quote" | "void";
+  is_locked: boolean;
   issued_date: string;
   created_at: string;
   notes: string;
@@ -225,7 +233,8 @@ export function InvoiceView({
     return d.type === "percent" ? `${d.name} (${d.amount}%)` : `${d.name} ($${d.amount})`;
   }
 
-  const locked = invoice?.status === "void";
+  const locked = invoice?.is_locked ?? false;
+  const isVoid = invoice?.status === "void";
   const isQuote = invoice?.status === "quote";
 
   const paid =
@@ -492,10 +501,16 @@ export function InvoiceView({
           actual sheet of "paper" floating on a muted backdrop, the way
           a real invoice PDF would look in a viewer. */}
       <div className="max-h-[85vh] flex-1 overflow-y-auto p-6">
-        {locked && (
+        {isVoid && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-600">
             <Ban className="h-4 w-4 shrink-0" strokeWidth={2} />
-            This invoice has been voided. It&apos;s kept for the record, but nothing on it can be changed anymore.
+            This invoice was never paid and aged out — it&apos;s kept for the record, but nothing on it can be changed anymore.
+          </div>
+        )}
+        {locked && !isVoid && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-600">
+            <Lock className="h-4 w-4 shrink-0" strokeWidth={2} />
+            This invoice is more than a day old and locked from further changes — it&apos;s still {invoice.status}, nothing here needs fixing.
           </div>
         )}
 

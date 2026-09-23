@@ -17,6 +17,14 @@ from common.models import TenantScopedModel
 class Service(TenantScopedModel):
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)  # DecimalField, not FloatField — money needs exact math, not floating-point rounding errors
+    # What it actually costs the business to deliver this service or
+    # source this product (materials, wholesale cost, contractor pay —
+    # whatever it is) — separate from `price`, which is what the CLIENT
+    # pays. Optional on purpose: a business that doesn't want to bother
+    # tracking cost still gets a working invoice and P&L report, just
+    # without a Gross Profit line for that item (see InvoiceLineItem's
+    # matching unit_cost snapshot, and reports/views.py).
+    cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     description = models.TextField(blank=True)
     is_taxable = models.BooleanField(default=True)  # controls whether this line item gets taxed on an invoice
 

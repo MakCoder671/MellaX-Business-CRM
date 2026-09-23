@@ -24,6 +24,7 @@ type Product = {
   id: number;
   name: string;
   price: string;
+  cost: string | null; // what it costs the business to source/stock this — optional, used for Cost of Goods Sold in Reports
   description: string;
   is_taxable: boolean;
   stock_quantity: number | null;
@@ -34,8 +35,10 @@ type Product = {
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null); // null = the form (when open) is adding a new product; a real id = it's editing that one instead
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [cost, setCost] = useState("");
   const [description, setDescription] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [lowStockThreshold, setLowStockThreshold] = useState("");
@@ -63,28 +66,53 @@ export default function ProductsPage() {
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setName("");
+    setPrice("");
+    setCost("");
+    setDescription("");
+    setStockQuantity("");
+    setLowStockThreshold("");
+  }
+
+  function startAdding() {
+    closeForm();
+    setShowForm(true);
+  }
+
+  function startEditing(product: Product) {
+    setEditingId(product.id);
+    setName(product.name);
+    setPrice(product.price);
+    setCost(product.cost ?? "");
+    setDescription(product.description);
+    setStockQuantity(product.stock_quantity === null ? "" : String(product.stock_quantity));
+    setLowStockThreshold(product.low_stock_threshold === null ? "" : String(product.low_stock_threshold));
+    setShowForm(true);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await apiFetch("/api/products/", {
-        method: "POST",
-        body: {
-          name,
-          price,
-          description,
-          is_taxable: true,
-          stock_quantity: stockQuantity || null,
-          low_stock_threshold: lowStockThreshold || null,
-        },
-      });
-      setName("");
-      setPrice("");
-      setDescription("");
-      setStockQuantity("");
-      setLowStockThreshold("");
-      setShowForm(false);
+      const body = {
+        name,
+        price,
+        cost: cost || null,
+        description,
+        is_taxable: true,
+        stock_quantity: stockQuantity || null,
+        low_stock_threshold: lowStockThreshold || null,
+      };
+      if (editingId === null) {
+        await apiFetch("/api/products/", { method: "POST", body });
+      } else {
+        await apiFetch(`/api/products/${editingId}/`, { method: "PATCH", body });
+      }
+      closeForm();
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
@@ -120,12 +148,12 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Products</h1>
-        <Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Cancel" : "Add product"}</Button>
+        <Button onClick={() => (showForm ? closeForm() : startAdding())}>{showForm ? "Cancel" : "Add product"}</Button>
       </div>
 
       {showForm && (
         <Card className="p-4">
-          <form onSubmit={handleCreate} className="grid grid-cols-3 gap-3">
+          <form onSubmit={handleSubmit} className="grid grid-cols-3 gap-3">
             <Field label="Name" required value={name} onChange={(e) => setName(e.target.value)} />
             <Field
               label="Price"
@@ -135,6 +163,14 @@ export default function ProductsPage() {
               required
               value={price}
               onChange={(e) => setPrice(e.target.value)}
+            />
+            <Field
+              label="Cost (optional)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
             />
             <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
             <Field
@@ -155,7 +191,7 @@ export default function ProductsPage() {
             />
             <div className="col-span-3 flex items-center gap-3">
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Saving…" : "Save product"}
+                {submitting ? "Saving…" : editingId === null ? "Save product" : "Save changes"}
               </Button>
               <ErrorText>{error}</ErrorText>
             </div>
@@ -186,7 +222,10 @@ export default function ProductsPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-700">${product.price}</span>
+                  <span className="text-sm text-gray-700">
+                    ${product.price}
+                    {product.cost !== null && <span className="text-gray-400"> · costs ${product.cost}</span>}
+                  </span>
                   <button
                     onClick={() => {
                       setOrderingId(orderingId === product.id ? null : product.id);
@@ -195,6 +234,9 @@ export default function ProductsPage() {
                     className="text-sm text-emerald-700 hover:underline"
                   >
                     Order more
+                  </button>
+                  <button onClick={() => startEditing(product)} className="text-sm text-emerald-700 hover:underline">
+                    Edit
                   </button>
                   <button onClick={() => handleDelete(product)} className="text-sm text-red-600 hover:underline">
                     Delete

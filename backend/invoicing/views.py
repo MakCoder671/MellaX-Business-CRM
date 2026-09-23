@@ -121,18 +121,23 @@ class InvoiceViewSet(TenantScopedModelViewSet):
         # in Reports, filterable by paid vs. has-a-balance and by date range).
         queryset = super().get_queryset()  # this already filters to just the logged-in account's own invoices
 
-        # Auto-void: per Mako, every invoice locks AND its status flips
-        # to Void automatically once it's 24 hours old — not something
-        # that waits for someone to click a button, and not something
-        # that only affects unpaid ones. A single bulk UPDATE (not a
-        # Python loop + one save() per row) catches every invoice on
-        # this account that's aged past the cutoff, every time its list
-        # or detail view gets loaded — so the status is always accurate
-        # to look at even without a real cron job wired up yet (see the
+        # Auto-void: an invoice that's aged past 24 hours WITHOUT ever
+        # being paid flips to Void automatically — not something that
+        # waits for someone to click a button. This only ever applies to
+        # still-unpaid invoices now; a Paid or Refunded invoice locks
+        # from further edits just as hard (see Invoice.is_locked(), which
+        # doesn't care about status at all) but keeps its real status
+        # forever, instead of getting overwritten to a confusing "Void"
+        # that used to make genuinely-paid invoices look cancelled in
+        # Reports. A single bulk UPDATE (not a Python loop + one save()
+        # per row) catches every unpaid invoice on this account that's
+        # aged past the cutoff, every time its list or detail view gets
+        # loaded — so the status is always accurate to look at even
+        # without a real cron job wired up yet (see the
         # "void_expired_invoices" management command for that).
-        Invoice.objects.for_account(self.request.user).exclude(
-            status__in=[Invoice.STATUS_VOID, Invoice.STATUS_QUOTE]
-        ).filter(created_at__lte=timezone.now() - VOID_AGE).update(status=Invoice.STATUS_VOID)
+        Invoice.objects.for_account(self.request.user).filter(
+            status=Invoice.STATUS_UNPAID, created_at__lte=timezone.now() - VOID_AGE
+        ).update(status=Invoice.STATUS_VOID)
 
         client_id = self.request.query_params.get("client")
         if client_id:
@@ -215,8 +220,10 @@ class InvoiceViewSet(TenantScopedModelViewSet):
                 unit_price = Decimal(str(data.get("unit_price")))
             except (InvalidOperation, TypeError):
                 return Response({"detail": "A refund needs an amount."}, status=400)
+            unit_cost = None  # no cost basis for money being handed back — see InvoiceLineItem.unit_cost
         else:
             unit_price = service.price
+            unit_cost = service.cost
 
         old_item = None
         note = (data.get("note") or "").strip()
@@ -239,6 +246,7 @@ class InvoiceViewSet(TenantScopedModelViewSet):
                 service=service,
                 quantity=quantity,
                 unit_price=unit_price,
+                unit_cost=unit_cost,
                 discount_type=discount_type,
                 discount_value=discount_value,
                 is_refund_line=is_refund_line,

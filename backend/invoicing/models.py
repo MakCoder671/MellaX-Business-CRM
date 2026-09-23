@@ -121,21 +121,21 @@ class Invoice(TenantScopedModel):
         return self.invoice_number
 
     def is_locked(self):
-        # A voided invoice is kept around for the record, but frozen —
-        # no line item, payment, or discount change is allowed on it
-        # anymore. Enforced here AND in the serializers/views that touch
-        # an invoice's children, since a line item or payment doesn't
-        # know its own invoice's status without asking.
+        # Every invoice freezes (no line item, payment, or discount
+        # change allowed) once it's 24 hours old, automatically — an
+        # audit-integrity rule, not a payment-status rule. This is
+        # completely independent of `status`: a PAID invoice locks just
+        # as much as an unpaid one, it just keeps saying "Paid" forever
+        # (see sync_void_status() below for the part that used to get
+        # this wrong). Enforced here AND in the serializers/views that
+        # touch an invoice's children, since a line item or payment
+        # doesn't know its own invoice's status without asking.
         #
-        # Age-aware on purpose, not just a literal status check: per
-        # Mako, EVERY invoice locks (and its status flips to Void — see
-        # sync_void_status() below) once it's 24 hours old, automatically,
-        # not just when someone remembers to click something. Checking
-        # the age here too (not only the stored status) means a write
-        # gets refused the instant it's old enough even if nothing has
-        # actually run sync_void_status() on this row yet — a request
-        # can't slip through in the gap between "old enough" and "the
-        # status field catching up to reflect that."
+        # Age-aware rather than a stored "locked" flag on purpose: this
+        # check works instantly the moment an invoice turns 24 hours
+        # old, even if sync_void_status() hasn't happened to run against
+        # this exact row yet — no gap where a write could slip through
+        # between "old enough" and "some background job catching up."
         #
         # A Quote is exempt — it isn't a real bill yet, so there's
         # nothing about it that needs the same audit-integrity lock a
@@ -148,16 +148,26 @@ class Invoice(TenantScopedModel):
 
     def sync_void_status(self):
         """
-        Flips this invoice over to Void and saves, if it's aged past the
-        cutoff and isn't already void/a quote — called whenever an
-        invoice is fetched (see InvoiceViewSet.get_queryset()) so the
-        STATUS FIELD ITSELF (not just is_locked()'s live check above)
-        stays accurate without anything needing to run on an actual
-        schedule for it to be correct. The "void_expired_invoices"
-        management command does the same thing in bulk, for wiring up to
-        a real daily cron/scheduler later.
+        Flips this invoice over to Void and saves, but ONLY if it's
+        aged past the cutoff and was NEVER paid — an invoice that's
+        actually Paid or Refunded keeps that real status forever;
+        is_locked() above already freezes it from further edits on its
+        own, independent of `status`, so there's nothing left for Void
+        to mean for a paid invoice except "confusingly overwrite real
+        payment history," which is exactly what this used to do before
+        Mako flagged it (a paid invoice was showing as "Void" in
+        Reports once it aged, even though the payment was completely
+        real). "Void" now means one thing only: aged out, never paid —
+        essentially a dead invoice nobody's ever going to collect on.
+        A Quote is still exempt (isn't a real bill yet).
+
+        Called whenever an invoice is fetched (see
+        InvoiceViewSet.get_queryset()) so the STATUS FIELD ITSELF stays
+        accurate without anything needing to run on an actual schedule.
+        The "void_expired_invoices" management command does the same
+        thing in bulk, for wiring up to a real daily cron/scheduler later.
         """
-        if self.status in (self.STATUS_VOID, self.STATUS_QUOTE):
+        if self.status != self.STATUS_UNPAID:
             return False
         if timezone.now() - self.created_at < VOID_AGE:
             return False
@@ -221,6 +231,13 @@ class InvoiceLineItem(models.Model):
     service = models.ForeignKey("services.Service", on_delete=models.PROTECT)
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)  # captured at the time of the invoice — if the Service's price changes later, old invoices stay correct
+    # Same snapshot idea as unit_price, but for what this line actually
+    # cost the business (Service.cost at the moment it was added) —
+    # used for Cost of Goods Sold in reports/views.py. Null when the
+    # Service had no cost set at the time (see Service.cost's own
+    # comment) — a refund line also leaves this null, since there's no
+    # cost basis for money being handed back (see add_line_item()).
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_refund_line = models.BooleanField(default=False)  # True marks this row as a refund added after the fact, not part of the original sale — see InvoiceViewSet.add_line_item()
 
     # A one-off discount on just THIS line — separate from (and in
@@ -249,6 +266,14 @@ class InvoiceLineItem(models.Model):
 
     def gross_amount(self):
         return self.quantity * self.unit_price
+
+    def cost_amount(self):
+        # What this line actually cost the business — NOT reduced by
+        # this line's discount, since discounting what you charge a
+        # client doesn't change what you paid for the product/materials.
+        if self.unit_cost is None:
+            return Decimal("0")
+        return self.quantity * self.unit_cost
 
     def discount_amount(self):
         if not self.discount_value:
