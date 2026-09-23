@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 const PERKS = [
-  "No contracts — cancel any time",
+  "No contracts, cancel any time",
   "Set up your first client in minutes",
   "Everything in one place: clients, invoices, bookings",
 ];

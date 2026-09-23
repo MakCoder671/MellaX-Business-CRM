@@ -504,13 +504,13 @@ export function InvoiceView({
         {isVoid && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-600">
             <Ban className="h-4 w-4 shrink-0" strokeWidth={2} />
-            This invoice was never paid and aged out — it&apos;s kept for the record, but nothing on it can be changed anymore.
+            This invoice was never paid and aged out. It&apos;s kept for the record, but nothing on it can be changed anymore.
           </div>
         )}
         {locked && !isVoid && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 p-3 text-sm text-gray-600">
             <Lock className="h-4 w-4 shrink-0" strokeWidth={2} />
-            This invoice is more than a day old and locked from further changes — it&apos;s still {invoice.status}, nothing here needs fixing.
+            This invoice is more than a day old and locked from further changes. It&apos;s still {invoice.status}, nothing here needs fixing.
           </div>
         )}
 

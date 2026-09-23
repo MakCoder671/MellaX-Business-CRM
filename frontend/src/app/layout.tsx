@@ -34,9 +34,9 @@ const spaceGrotesk = Space_Grotesk({
 // Next.js reads this and automatically fills in the page's <title> and
 // meta description tags — no need to hand-write <head> HTML ourselves.
 export const metadata: Metadata = {
-  title: "MellaX — CRM for solo businesses, without the enterprise price tag",
+  title: "MellaX: CRM for solo businesses, without the enterprise price tag",
   description:
-    "Clients, invoicing, scheduling, and marketing in one simple CRM built for solo founders and small service businesses — starting at $9.99/mo.",
+    "Clients, invoicing, scheduling, and marketing in one simple CRM built for solo founders and small service businesses, starting at $9.99/mo.",
 };
 
 // LayoutProps<"/"> is a Next.js 16 typed-routes helper — it knows this is

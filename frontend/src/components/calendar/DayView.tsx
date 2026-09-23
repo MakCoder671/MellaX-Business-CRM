@@ -120,7 +120,7 @@ export function DayView({
         <div className="flex items-center justify-between">
           <DayNav date={date} setDate={setDate} />
         </div>
-        <p className="mt-1 text-sm text-gray-500">Closed — set this in Settings &gt; Operating Hours</p>
+        <p className="mt-1 text-sm text-gray-500">Closed. Set this in Settings &gt; Operating Hours</p>
 
         {dayAppointments.length > 0 ? (
           <ul className="mt-4 space-y-1.5">
@@ -143,7 +143,7 @@ export function DayView({
           </ul>
         ) : (
           <div className="mt-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-400">
-            Closed all day — nothing to book.
+            Closed all day. Nothing to book.
           </div>
         )}
       </div>

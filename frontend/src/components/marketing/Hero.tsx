@@ -22,7 +22,7 @@ export function Hero() {
           </h1>
 
           <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-ink/70">
-            Clients, invoicing, scheduling, and marketing — in one CRM that
+            Clients, invoicing, scheduling, and marketing, all in one CRM that
             doesn&apos;t need a sales call, a demo, or an enterprise budget to
             get started.
           </p>

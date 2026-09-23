@@ -213,7 +213,7 @@ export default function ReportsPage() {
       <PageHeader
         icon={BarChart3}
         title="Reports"
-        description="Profit & loss, your top performers, and inventory health — all in one place."
+        description="Profit & loss, your top performers, and inventory health, all in one place."
       />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
@@ -235,7 +235,7 @@ export default function ReportsPage() {
         <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
             Built for tax filing purposes, not tax advice. Consult a professional for filing. Cost of goods, gross
-            profit, and tax collected only count invoices that were actually paid (or partially refunded) — not
+            profit, and tax collected only count invoices that were actually paid (or partially refunded), not
             ones still sitting unpaid.
           </p>
 
@@ -277,7 +277,7 @@ export default function ReportsPage() {
       {tab === "by-item" && (
         <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
-            Which services and products actually make money, sorted by revenue — same date range and paid-invoices
+            Which services and products actually make money, sorted by revenue. Same date range and paid-invoices
             basis as Profit &amp; Loss.
           </p>
 
@@ -319,7 +319,7 @@ export default function ReportsPage() {
       {tab === "by-client" && (
         <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
-            Who&apos;s worth the most, sorted by revenue — same date range and paid-invoices basis as Profit &amp;
+            Who&apos;s worth the most, sorted by revenue. Same date range and paid-invoices basis as Profit &amp;
             Loss.
           </p>
 

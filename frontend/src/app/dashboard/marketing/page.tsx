@@ -212,7 +212,7 @@ export default function MarketingPage() {
         <Card className="flex items-start gap-3 rounded-2xl border-[var(--accent-200,#a7f3d0)] bg-[var(--accent-50,#ecfdf5)] p-4 text-sm text-[var(--accent-800,#065f46)] shadow-sm">
           <Sparkles className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p>
-            Upgrade to Plus for auto-posting to social media and AI-drafted content — campaigns in minutes instead
+            Upgrade to Plus for auto-posting to social media and AI-drafted content, campaigns in minutes instead
             of writing everything by hand.
           </p>
         </Card>
@@ -235,7 +235,7 @@ export default function MarketingPage() {
         <Card className="rounded-2xl p-10 text-center shadow-sm">
           <Mail className="mx-auto h-8 w-8 text-gray-300" strokeWidth={1.5} />
           <p className="mt-3 text-sm text-gray-600">
-            You haven&apos;t sent any e-blasts yet — create your first one above.
+            You haven&apos;t sent any e-blasts yet. Create your first one above.
           </p>
         </Card>
       ) : (

@@ -46,7 +46,7 @@ function UpgradePrompt() {
       <p className="mt-3 font-semibold text-gray-900">Campaigns are a Plus feature</p>
       <p className="mx-auto mt-1.5 max-w-sm text-sm text-gray-500">
         Track shareable links and QR codes for your promotions, and capture leads automatically when people click
-        or scan — see who a campaign actually brought in, and whether it was worth what you spent.
+        or scan, so you see who a campaign actually brought in, and whether it was worth what you spent.
       </p>
     </Card>
   );
@@ -179,7 +179,7 @@ export default function CampaignsPage() {
             <Card className="rounded-2xl p-10 text-center shadow-sm">
               <QrCode className="mx-auto h-8 w-8 text-gray-300" strokeWidth={1.5} />
               <p className="mt-3 text-sm text-gray-600">
-                No campaigns yet — create one above to get a shareable link and QR code.
+                No campaigns yet. Create one above to get a shareable link and QR code.
               </p>
             </Card>
           ) : (

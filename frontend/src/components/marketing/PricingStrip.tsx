@@ -40,7 +40,7 @@ export function PricingStrip() {
           </h2>
           <p className="mt-4 text-pretty text-lg leading-relaxed text-white/75">
             Pick a plan, put in a card, start using it in the next five
-            minutes. Change or cancel whenever — no contract, no
+            minutes. Change or cancel whenever, no contract, no
             &quot;enterprise pricing available on request.&quot;
           </p>
         </div>

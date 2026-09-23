@@ -162,7 +162,7 @@ export default function CampaignDetailPage({
             <p className="mt-2 text-sm text-gray-500">Loading…</p>
           ) : leads.length === 0 ? (
             <p className="mt-2 text-sm text-gray-500">
-              No leads yet — they&apos;ll show up here as soon as someone fills out the form.
+              No leads yet. They&apos;ll show up here as soon as someone fills out the form.
             </p>
           ) : (
             <ul className="mt-3 divide-y divide-gray-100">

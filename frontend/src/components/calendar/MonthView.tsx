@@ -198,7 +198,7 @@ export function MonthView({
 
         {selectedDayAppointments.length === 0 ? (
           <p className="mt-2 text-sm text-gray-500">
-            {isClosedDay(hours, selectedDate) ? "Closed all day — nothing to book." : "Nothing booked this day."}
+            {isClosedDay(hours, selectedDate) ? "Closed all day. Nothing to book." : "Nothing booked this day."}
           </p>
         ) : (
           <ul className="mt-2 space-y-1.5">

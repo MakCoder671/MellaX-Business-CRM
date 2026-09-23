@@ -59,7 +59,7 @@ export function DiscountsSection() {
               <span className="font-medium text-gray-700">
                 {d.name}{" "}
                 <span className="font-normal text-gray-400">
-                  — {d.type === "percent" ? `${d.amount}%` : `$${d.amount}`}
+                  · {d.type === "percent" ? `${d.amount}%` : `$${d.amount}`}
                 </span>
               </span>
               <button onClick={() => handleDelete(d)} className="text-sm text-red-600 hover:underline">

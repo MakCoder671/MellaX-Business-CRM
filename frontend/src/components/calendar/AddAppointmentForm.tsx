@@ -149,7 +149,7 @@ export function AddAppointmentForm({
           body: { ...basePayload, frequency, occurrences },
         });
         if (result.created.length === 0) {
-          setError("Every date in that series conflicts with an existing appointment — nothing was booked.");
+          setError("Every date in that series conflicts with an existing appointment. Nothing was booked.");
           return;
         }
         if (result.skipped.length > 0) {

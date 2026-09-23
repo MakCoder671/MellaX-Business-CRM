@@ -33,7 +33,7 @@ if not Service.objects.filter(business_account=account, is_product=True).exists(
 if not EBlast.objects.filter(business_account=account).exists():
     now = timezone.now()
     EBlast.objects.create(business_account=account, subject="Spring Specials!", body="Book a color treatment this month and get 15% off.", template_key="promo", sent_at=now - timedelta(days=20), recipient_count=42)
-    EBlast.objects.create(business_account=account, subject="We missed you", body="It's been a while — come back for a free blowout with any service.", template_key="winback", sent_at=now - timedelta(days=10), recipient_count=58)
+    EBlast.objects.create(business_account=account, subject="We missed you", body="It's been a while. Come back for a free blowout with any service.", template_key="winback", sent_at=now - timedelta(days=10), recipient_count=58)
     EBlast.objects.create(business_account=account, subject="Holiday Hours", body="Updated hours for the holidays.", template_key="announcement", sent_at=now - timedelta(days=2), recipient_count=71)
     EBlast.objects.create(business_account=account, subject="New Product Line", body="Draft: announcing our new product line.", template_key="promo", sent_at=None, recipient_count=0)
 

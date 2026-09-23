@@ -52,7 +52,7 @@ export function BusinessInfoSection() {
     <SettingsSection
       icon={Building2}
       title="Business Information"
-      description="Feeds into invoices, your landing page, and marketing e-blasts automatically — no need to enter it twice."
+      description="Feeds into invoices, your landing page, and marketing e-blasts automatically. No need to enter it twice."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field

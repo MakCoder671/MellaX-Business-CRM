@@ -5,7 +5,7 @@ const FEATURES = [
     icon: Users,
     title: "Clients",
     description:
-      "One place for every client's contact info, history, and notes — no more digging through texts and spreadsheets.",
+      "One place for every client's contact info, history, and notes, so you stop digging through texts and spreadsheets.",
   },
   {
     icon: ReceiptText,
@@ -17,7 +17,7 @@ const FEATURES = [
     icon: CalendarClock,
     title: "Scheduling",
     description:
-      "A real calendar for appointments and bookings, with a page clients can use to book themselves — no back-and-forth texting.",
+      "A real calendar for appointments and bookings, with a page clients can use to book themselves, no back-and-forth texting.",
   },
   {
     icon: Megaphone,
@@ -39,7 +39,7 @@ export function FeatureGrid() {
         </h2>
         <p className="mt-4 text-pretty text-lg leading-relaxed text-ink/70">
           MellaX replaces the spreadsheet, the text thread, the invoice
-          generator, and the sticky notes — with one tool built for how a
+          generator, and the sticky notes, with one tool built for how a
           small service business actually runs.
         </p>
       </div>

@@ -155,7 +155,7 @@ export default function ProductsPage() {
       <PageHeader
         icon={Package}
         title="Products"
-        description="Physical items you sell — track stock and get warned before you run out."
+        description="Physical items you sell. Track stock and get warned before you run out."
         action={
           <Button onClick={() => (showForm ? closeForm() : startAdding())} className="inline-flex items-center gap-1.5">
             <Plus className="h-4 w-4" strokeWidth={2.5} />

@@ -96,7 +96,7 @@ export default function ServicesPage() {
       <PageHeader
         icon={Wrench}
         title="Services"
-        description="What you offer and how much it costs — feeds straight into invoices and booking."
+        description="What you offer and how much it costs. Feeds straight into invoices and booking."
         action={
           <Button onClick={() => (showForm ? closeForm() : startAdding())} className="inline-flex items-center gap-1.5">
             <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -157,7 +157,7 @@ export default function ServicesPage() {
         <Card className="rounded-2xl p-10 text-center shadow-sm">
           <Wrench className="mx-auto h-8 w-8 text-gray-300" strokeWidth={1.5} />
           <p className="mt-3 text-sm text-gray-600">
-            You don&apos;t have any services yet — add your first one above.
+            You don&apos;t have any services yet. Add your first one above.
           </p>
         </Card>
       ) : (

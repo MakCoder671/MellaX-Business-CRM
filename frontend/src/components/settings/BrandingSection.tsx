@@ -73,7 +73,7 @@ export function BrandingSection() {
     <SettingsSection
       icon={ImageIcon}
       title="Branding"
-      description="Your logo — shown on invoices, your landing page, marketing e-blasts, and here in the dashboard."
+      description="Your logo, shown on invoices, your landing page, marketing e-blasts, and here in the dashboard."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

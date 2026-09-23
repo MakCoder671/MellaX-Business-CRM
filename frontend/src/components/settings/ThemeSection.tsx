@@ -68,13 +68,13 @@ export function ThemeSection() {
     <SettingsSection
       icon={Palette}
       title="Theme"
-      description="Personalize how the software looks for you — pick from a set of pre-made looks, no color-blending required."
+      description="Personalize how the software looks for you. Pick from a set of pre-made looks, no color-blending required."
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <p className="text-sm font-medium text-gray-700">Background</p>
           <p className="mb-2 mt-0.5 text-sm text-gray-500">
-            The page background, sidebar, and header — one consistent look across the whole dashboard.
+            The page background, sidebar, and header, one consistent look across the whole dashboard.
           </p>
           <TabbedPresetPicker
             options={BACKGROUND_OPTIONS}

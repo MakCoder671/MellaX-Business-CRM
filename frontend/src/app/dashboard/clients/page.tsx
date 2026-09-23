@@ -115,7 +115,7 @@ export default function ClientsPage() {
         <p className="text-sm text-gray-500">Loading…</p>
       ) : clients.length === 0 ? (
         <Card className="p-6 text-sm text-gray-600">
-          You don&apos;t have any clients yet — add your first one above.
+          You don&apos;t have any clients yet. Add your first one above.
         </Card>
       ) : (
         <Card className="divide-y divide-gray-200">

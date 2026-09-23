@@ -31,7 +31,7 @@ export const EBLAST_TEMPLATES: EBlastTemplate[] = [
     key: "new-service",
     name: "New Service Announcement",
     subject: "We just added something new",
-    body: "Hi there,\n\nWe're excited to share that we've added a new service — reach out if you'd like to learn more or get on the schedule.\n\nTalk soon!",
+    body: "Hi there,\n\nWe're excited to share that we've added a new service. Reach out if you'd like to learn more or get on the schedule.\n\nTalk soon!",
   },
   {
     key: "newsletter",
@@ -43,6 +43,6 @@ export const EBLAST_TEMPLATES: EBlastTemplate[] = [
     key: "we-miss-you",
     name: "We Miss You",
     subject: "It's been a while!",
-    body: "Hi there,\n\nWe noticed it's been a while since your last visit — we'd love to see you again. Let us know if you'd like to book something soon.",
+    body: "Hi there,\n\nWe noticed it's been a while since your last visit. We'd love to see you again. Let us know if you'd like to book something soon.",
   },
 ];

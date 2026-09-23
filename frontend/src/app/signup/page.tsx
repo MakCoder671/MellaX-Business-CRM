@@ -144,7 +144,7 @@ export default function SignupPage() {
               ))}
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Billing isn&apos;t connected yet — your account is created on this
+              Billing isn&apos;t connected yet. Your account is created on this
               plan now, and card collection via Stripe is coming before
               launch.
             </p>
