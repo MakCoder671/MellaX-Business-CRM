@@ -176,6 +176,10 @@ export function appointmentChipClasses(status: Appointment["status"], alternate 
     : "bg-[var(--cal-100,#d1fae5)] text-[var(--cal-800,#065f46)] hover:bg-[var(--cal-300,#6ee7b7)]";
 }
 
-export function appointmentStatusIcon(status: Appointment["status"]) {
-  return status === "no_show" ? "⚠ " : "";
+// A plain boolean rather than a rendered icon/glyph — helpers.ts is a
+// .ts file with no JSX, so the actual <AlertTriangle /> icon each
+// calendar view shows for a No Show is rendered there directly; this
+// just answers "should that icon show up at all" from one place.
+export function isNoShow(status: Appointment["status"]) {
+  return status === "no_show";
 }

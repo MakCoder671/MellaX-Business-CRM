@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle, Clock } from "lucide-react";
 
 import { Button } from "@/components/form";
 
 import { AddAppointmentForm } from "./AddAppointmentForm";
 import {
   appointmentChipClasses,
-  appointmentStatusIcon,
   appointmentsOn,
   clientName,
   formatDuration,
   isClosedDay,
+  isNoShow,
   sameDay,
   serviceName,
 } from "./helpers";
@@ -157,12 +158,14 @@ export function MonthView({
                         e.stopPropagation();
                         onSelectAppointment(appt);
                       }}
-                      className={`truncate rounded px-1 text-[10px] ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
+                      className={`flex items-center gap-1 truncate rounded px-1 text-[10px] font-medium ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
                     >
-                      {appointmentStatusIcon(appt.status)}
-                      {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}{" "}
-                      {clientName(clients, appt.client)}
-                      {service && ` · ${service}`}
+                      {isNoShow(appt.status) && <AlertTriangle className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />}
+                      <span className="shrink-0 font-normal opacity-80">
+                        {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                      </span>
+                      <span className="truncate">{clientName(clients, appt.client)}</span>
+                      {service && <span className="truncate font-normal opacity-80">· {service}</span>}
                     </p>
                   );
                 })}
@@ -211,14 +214,21 @@ export function MonthView({
                       one run-on line. */}
                   <button
                     onClick={() => onSelectAppointment(appt)}
-                    className={`flex w-full flex-col gap-0.5 rounded-md px-3 py-2 text-left ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
+                    className={`flex w-full flex-col gap-1 rounded-lg px-3 py-2.5 text-left ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
                   >
-                    <span className="text-sm font-bold sm:text-base">
-                      {appointmentStatusIcon(appt.status)}
+                    <span className="flex items-center gap-1.5 text-sm font-bold sm:text-base">
+                      {isNoShow(appt.status) && (
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+                      )}
                       {clientName(clients, appt.client)}
                     </span>
-                    {service && <span className="text-sm">{service}</span>}
-                    <span className="text-xs">
+                    {service && (
+                      <span className="inline-block w-fit max-w-full truncate rounded-full bg-white/60 px-2 py-0.5 text-xs font-semibold shadow-sm">
+                        {service}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1.5 text-xs opacity-80">
+                      <Clock className="h-3 w-3 shrink-0" strokeWidth={2} />
                       {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} ·{" "}
                       {formatDuration(appt.duration_minutes)}
                     </span>

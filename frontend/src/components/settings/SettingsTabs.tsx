@@ -2,43 +2,55 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Building2, CreditCard, Palette, CalendarClock } from "lucide-react";
 
 // ----------------------------------------------------------------------------
 // Settings had grown into one long scroll of six unrelated-looking
 // sections — grouping them under a few labeled categories (Business /
-// Calendar / Invoicing) makes it obvious at a glance where a given
-// setting lives, instead of hunting through a wall of cards. Same
-// tabs-as-routes pattern as MarketingTabs.
+// Theme / Calendar / Invoicing) makes it obvious at a glance where a
+// given setting lives. Rendered as a vertical nav (icon + label, active
+// item accent-tinted) matching the same nav-item look already used in
+// the dashboard's own sidebar, rather than a plain horizontal tab strip
+// — a settings page reads more like a proper "control panel" this way,
+// and the icons double as a quick visual index of what's on each tab.
 // ----------------------------------------------------------------------------
 
 const TABS = [
-  { href: "/dashboard/settings", label: "Business" },
-  { href: "/dashboard/settings/theme", label: "Theme" },
-  { href: "/dashboard/settings/calendar", label: "Calendar" },
-  { href: "/dashboard/settings/invoicing", label: "Invoicing" },
+  { href: "/dashboard/settings", label: "Business", icon: Building2 },
+  { href: "/dashboard/settings/theme", label: "Theme", icon: Palette },
+  { href: "/dashboard/settings/calendar", label: "Calendar", icon: CalendarClock },
+  { href: "/dashboard/settings/invoicing", label: "Invoicing", icon: CreditCard },
 ];
 
 export function SettingsTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-4 border-b border-gray-200">
+    <nav className="flex flex-col gap-1">
       {TABS.map((tab) => {
         const active = pathname === tab.href;
+        const Icon = tab.icon;
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium ${
+            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               active
-                ? "border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--accent-50,#ecfdf5)] text-[var(--accent-700,#047857)]"
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             }`}
           >
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                active ? "accent-bg" : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              <Icon className="h-4 w-4" strokeWidth={2} />
+            </span>
             {tab.label}
           </Link>
         );
       })}
-    </div>
+    </nav>
   );
 }

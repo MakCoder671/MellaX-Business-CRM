@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Building2 } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText, Field } from "@/components/form";
+import { Button, ErrorText, Field } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // The "Business Information" section of Settings — name, phone, address.
@@ -47,12 +49,12 @@ export function BusinessInfoSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Business Information</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Feeds into invoices, your landing page, and marketing e-blasts automatically — no need to enter it twice.
-      </p>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <SettingsSection
+      icon={Building2}
+      title="Business Information"
+      description="Feeds into invoices, your landing page, and marketing e-blasts automatically — no need to enter it twice."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <Field
           label="Business name"
           required
@@ -69,6 +71,6 @@ export function BusinessInfoSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

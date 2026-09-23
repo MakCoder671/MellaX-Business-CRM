@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Tag } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import { Button, Card, Field } from "@/components/form";
+import { Button, Field } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // Discounts — reusable, selectable when building an invoice. Same
 // list-plus-add-form shape as Tender Types, just with an extra
@@ -45,18 +47,22 @@ export function DiscountsSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Discounts</h2>
-      <p className="mt-1 text-sm text-gray-500">Reusable discounts, selectable when building an invoice.</p>
-
+    <SettingsSection
+      icon={Tag}
+      title="Discounts"
+      description="Reusable discounts, selectable when building an invoice."
+    >
       {discounts && (
-        <ul className="mt-4 divide-y divide-gray-200">
+        <ul className="divide-y divide-gray-100">
           {discounts.map((d) => (
-            <li key={d.id} className="flex items-center justify-between py-2 text-sm">
-              <span>
-                {d.name} — {d.type === "percent" ? `${d.amount}%` : `$${d.amount}`}
+            <li key={d.id} className="flex items-center justify-between py-2.5 text-sm">
+              <span className="font-medium text-gray-700">
+                {d.name}{" "}
+                <span className="font-normal text-gray-400">
+                  — {d.type === "percent" ? `${d.amount}%` : `$${d.amount}`}
+                </span>
               </span>
-              <button onClick={() => handleDelete(d)} className="text-red-600 hover:underline">
+              <button onClick={() => handleDelete(d)} className="text-sm text-red-600 hover:underline">
                 Remove
               </button>
             </li>
@@ -93,6 +99,6 @@ export function DiscountsSection() {
           Add
         </Button>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

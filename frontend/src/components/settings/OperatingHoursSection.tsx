@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import { Button, Card } from "@/components/form";
+import { Button } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // Operating Hours — one row per weekday. Per the plan doc, this "reflects
@@ -82,23 +84,25 @@ export function OperatingHoursSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Operating Hours</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Days/times outside these show as &quot;Off&quot; on your Calendar.
-      </p>
-
+    <SettingsSection
+      icon={Clock}
+      title="Operating Hours"
+      description={<>Days/times outside these show as &quot;Off&quot; on your Calendar.</>}
+    >
       {!hours ? (
-        <p className="mt-4 text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500">Loading…</p>
       ) : (
-        <div className="mt-4 space-y-2">
+        <div className="space-y-2">
           {/* Sort a copy for display (Sunday first) without touching the
               actual order of the `hours` array itself — day_of_week is
               what matters, not array position. */}
           {[...hours]
             .sort((a, b) => ((a.day_of_week + 1) % 7) - ((b.day_of_week + 1) % 7))
             .map((day) => (
-              <div key={day.day_of_week} className="flex items-center gap-3 text-sm">
+              <div
+                key={day.day_of_week}
+                className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm"
+              >
                 <label className="flex w-32 items-center gap-2">
                   <input
                     type="checkbox"
@@ -146,6 +150,6 @@ export function OperatingHoursSection() {
           </div>
         </div>
       )}
-    </Card>
+    </SettingsSection>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 
 import { AddAppointmentForm } from "./AddAppointmentForm";
 import {
@@ -16,10 +17,10 @@ import {
 } from "./gridHelpers";
 import {
   appointmentBlockClasses,
-  appointmentStatusIcon,
   appointmentsOn,
   appointmentTextTier,
   businessHoursFor,
+  isNoShow,
   serviceName,
   startOfWeek,
 } from "./helpers";
@@ -246,7 +247,7 @@ export function WeekView({
                       const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
                       const alternate = index % 2 === 1;
                       const service = serviceName(services, appt.service);
-                      const icon = appointmentStatusIcon(appt.status);
+                      const noShow = isNoShow(appt.status);
                       const name = clientNameFor(appt.client);
                       // Same idea as DayView's tiers - a week column's
                       // block height is just as duration-proportional as
@@ -255,7 +256,7 @@ export function WeekView({
                       // narrow regardless of duration though, so there's
                       // no "spacious" 3-line case here the way DayView
                       // has - just tight (1 line) vs everything else
-                      // (name bold + service on their own two lines).
+                      // (name bold + service tag on their own two lines).
                       const tier = appointmentTextTier(appt.duration_minutes);
                       return (
                         <button
@@ -265,19 +266,25 @@ export function WeekView({
                           style={{ top: top + 1, height: Math.max(height - 2, 4) }}
                         >
                           {tier === "tight" ? (
-                            <p className="truncate text-[9px] font-bold">
-                              {icon}
-                              {name}
-                              {service && <span className="font-normal"> · {service}</span>}
+                            <p className="flex items-center gap-1 truncate text-[9px] font-bold">
+                              {noShow && <AlertTriangle className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />}
+                              <span className="truncate">{name}</span>
+                              {service && <span className="truncate font-normal opacity-90">· {service}</span>}
                             </p>
                           ) : (
-                            <>
-                              <p className={`truncate font-bold ${tier === "spacious" ? "text-[11px]" : "text-[10px]"}`}>
-                                {icon}
-                                {name}
+                            <div className="space-y-0.5">
+                              <p
+                                className={`flex items-center gap-1 truncate font-bold ${tier === "spacious" ? "text-[11px]" : "text-[10px]"}`}
+                              >
+                                {noShow && <AlertTriangle className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />}
+                                <span className="truncate">{name}</span>
                               </p>
-                              {service && <p className="truncate text-[9px]">{service}</p>}
-                            </>
+                              {service && (
+                                <span className="inline-block max-w-full truncate rounded-full bg-white/25 px-1.5 py-px text-[8px] font-semibold cal-block-text">
+                                  {service}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </button>
                       );

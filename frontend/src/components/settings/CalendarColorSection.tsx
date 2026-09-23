@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Paintbrush } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText } from "@/components/form";
+import { Button, ErrorText } from "@/components/form";
 import { ACCENT_PRESETS, type AccentPresetId } from "@/lib/themePresets";
+import { SettingsSection } from "./SettingsSection";
 import { TabbedPresetPicker } from "./TabbedPresetPicker";
 
 // ----------------------------------------------------------------------------
@@ -53,14 +55,17 @@ export function CalendarColorSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Calendar Color</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Colors appointments, the today highlight, and the Day/Week/Month toggle on the Calendar. No Show stays red
-        no matter what&apos;s picked here, so it always stands out.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <SettingsSection
+      icon={Paintbrush}
+      title="Calendar Color"
+      description={
+        <>
+          Colors appointments, the today highlight, and the Day/Week/Month toggle on the Calendar. No Show stays red
+          no matter what&apos;s picked here, so it always stands out.
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <TabbedPresetPicker
           options={ACCENT_OPTIONS}
           kinds={["solid", "gradient"]}
@@ -70,9 +75,9 @@ export function CalendarColorSection() {
 
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-400">Preview</p>
-          <div className="flex items-center gap-4 rounded-md border border-gray-200 bg-white p-3">
+          <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/60 p-3">
             <div
-              className="w-28 rounded-md border px-2 py-1.5 text-left text-xs text-white shadow-sm"
+              className="w-28 rounded-lg border px-2 py-1.5 text-left text-xs text-white shadow-sm"
               style={{ background: preview.bg, borderColor: preview.shades[700] }}
             >
               <p className="truncate font-medium">Jane Doe</p>
@@ -100,6 +105,6 @@ export function CalendarColorSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

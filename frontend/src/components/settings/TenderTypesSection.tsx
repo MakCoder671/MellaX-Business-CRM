@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CreditCard } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
-import { Button, Card, Field } from "@/components/form";
+import { Button, Field } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // Tender Types — how a payment was received (Cash, Visa, ...). The list
@@ -48,21 +50,22 @@ export function TenderTypesSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Tender Types</h2>
-      <p className="mt-1 text-sm text-gray-500">How payments are received. Add your own on top of the built-in defaults.</p>
-
+    <SettingsSection
+      icon={CreditCard}
+      title="Tender Types"
+      description="How payments are received. Add your own on top of the built-in defaults."
+    >
       {tenderTypes && (
-        <ul className="mt-4 divide-y divide-gray-200">
+        <ul className="divide-y divide-gray-100">
           {tenderTypes.map((t) => (
-            <li key={t.id} className="flex items-center justify-between py-2 text-sm">
-              <span>{t.name}</span>
+            <li key={t.id} className="flex items-center justify-between py-2.5 text-sm">
+              <span className="font-medium text-gray-700">{t.name}</span>
               {t.is_custom ? (
-                <button onClick={() => handleDelete(t)} className="text-red-600 hover:underline">
+                <button onClick={() => handleDelete(t)} className="text-sm text-red-600 hover:underline">
                   Remove
                 </button>
               ) : (
-                <span className="text-xs text-gray-400">default</span>
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">default</span>
               )}
             </li>
           ))}
@@ -77,6 +80,6 @@ export function TenderTypesSection() {
           Add
         </Button>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

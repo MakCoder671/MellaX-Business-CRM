@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Receipt } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText, Field } from "@/components/form";
+import { Button, ErrorText, Field } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // Invoice Settings — the tax rates and defaults that apply to every new
@@ -49,12 +51,12 @@ export function InvoiceSettingsSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Invoice Settings</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Tax rates default to 0% and auto-calculate onto every new invoice.
-      </p>
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <SettingsSection
+      icon={Receipt}
+      title="Invoice Settings"
+      description="Tax rates default to 0% and auto-calculate onto every new invoice."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Field
             label="Service Tax %"
@@ -84,7 +86,7 @@ export function InvoiceSettingsSection() {
             value={terms}
             onChange={(e) => setTerms(e.target.value)}
             rows={2}
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[var(--accent-500,#10b981)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-500,#10b981)]"
           />
         </label>
         <div className="flex items-center gap-3">
@@ -95,6 +97,6 @@ export function InvoiceSettingsSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

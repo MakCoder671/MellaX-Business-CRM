@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle, Clock } from "lucide-react";
 
 import { Button } from "@/components/form";
 
@@ -18,11 +19,11 @@ import {
 } from "./gridHelpers";
 import {
   appointmentBlockClasses,
-  appointmentStatusIcon,
   appointmentsOn,
   appointmentTextTier,
   businessHoursFor,
   formatDuration,
+  isNoShow,
   serviceName,
 } from "./helpers";
 import type { Appointment, BusinessHour, Client, Service } from "./types";
@@ -127,10 +128,12 @@ export function DayView({
               <li key={appt.id}>
                 <button
                   onClick={() => onSelectAppointment(appt)}
-                  className="flex w-full items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-left text-sm text-gray-600 hover:bg-gray-100"
+                  className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-left text-sm text-gray-600 hover:bg-gray-100"
                 >
-                  <span className="font-medium">
-                    {appointmentStatusIcon(appt.status)}
+                  <span className="flex items-center gap-1.5 font-medium">
+                    {isNoShow(appt.status) && (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-600" strokeWidth={2.5} />
+                    )}
                     {clientNameFor(appt.client)}
                   </span>
                   <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime)))}</span>
@@ -250,7 +253,7 @@ export function DayView({
             const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
             const alternate = index % 2 === 1;
             const service = serviceName(services, appt.service);
-            const icon = appointmentStatusIcon(appt.status);
+            const noShow = isNoShow(appt.status);
             const name = clientNameFor(appt.client);
             const time = minutesToLabel(start);
             // Name, service, and duration each get their own line, sized
@@ -266,52 +269,62 @@ export function DayView({
             // fit on a short one, the tier picks smaller text and fewer,
             // combined lines so everything stays visible either way.
             const tier = appointmentTextTier(appt.duration_minutes);
+            // The service now reads as a small tag (a translucent pill
+            // against the block's own color) rather than plain inline
+            // text after a "·" — it's a distinct piece of information
+            // (WHAT this booking is) from the client's name (WHO it's
+            // for), so it gets its own visual treatment instead of
+            // reading as one run-on sentence.
+            const servicePill = service && (
+              <span className="inline-block max-w-full truncate rounded-full bg-white/25 px-1.5 py-px text-[9px] font-semibold leading-tight cal-block-text">
+                {service}
+              </span>
+            );
+            const nameLine = (textSize: string) => (
+              <p className={`flex items-center gap-1 truncate font-bold leading-tight ${textSize}`}>
+                {noShow && <AlertTriangle className="h-3 w-3 shrink-0" strokeWidth={2.5} />}
+                <span className="truncate">{name}</span>
+              </p>
+            );
             return (
               <button
                 key={appt.id}
                 onClick={() => onSelectAppointment(appt)}
-                className={`absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-0.5 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
+                className={`absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
                 style={{ top: top + 1, height: Math.max(height - 2, 4) }}
               >
                 {tier === "tight" ? (
-                  <p className="truncate text-[10px] font-bold leading-tight">
-                    {icon}
-                    {name}
-                    {service && <span className="font-normal"> · {service}</span>}
+                  <p className="flex items-center gap-1 truncate text-[10px] font-bold leading-tight">
+                    {noShow && <AlertTriangle className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />}
+                    <span className="truncate">{name}</span>
+                    {service && <span className="truncate font-normal opacity-90">· {service}</span>}
                   </p>
                 ) : tier === "compact" ? (
                   <>
-                    <p className="truncate text-xs font-bold leading-tight">
-                      {icon}
-                      {name}
-                    </p>
-                    <p className="truncate text-[10px] leading-tight">
+                    {nameLine("text-xs")}
+                    <p className="truncate text-[10px] leading-tight opacity-90">
                       {service ? `${service} · ` : ""}
                       {formatDuration(appt.duration_minutes)}
                     </p>
                   </>
                 ) : tier === "cozy" ? (
-                  <>
-                    <p className="truncate text-xs font-bold leading-tight">
-                      {icon}
-                      {name}
-                    </p>
-                    {service && <p className="truncate text-[11px] leading-tight">{service}</p>}
-                    <p className="truncate text-[10px] leading-tight">
+                  <div className="space-y-0.5">
+                    {nameLine("text-xs")}
+                    {servicePill}
+                    <p className="flex items-center gap-1 truncate text-[10px] leading-tight opacity-90">
+                      <Clock className="h-2.5 w-2.5 shrink-0" strokeWidth={2} />
                       {time} · {formatDuration(appt.duration_minutes)}
                     </p>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <p className="truncate text-sm font-bold leading-tight sm:text-base">
-                      {icon}
-                      {name}
-                    </p>
-                    {service && <p className="truncate text-xs leading-tight">{service}</p>}
-                    <p className="truncate text-xs leading-tight">
+                  <div className="space-y-1">
+                    {nameLine("text-sm sm:text-base")}
+                    {servicePill}
+                    <p className="flex items-center gap-1 truncate text-xs leading-tight opacity-90">
+                      <Clock className="h-3 w-3 shrink-0" strokeWidth={2} />
                       {time} · {formatDuration(appt.duration_minutes)}
                     </p>
-                  </>
+                  </div>
                 )}
               </button>
             );

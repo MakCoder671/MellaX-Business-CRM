@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Palette } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText } from "@/components/form";
+import { Button, ErrorText } from "@/components/form";
 import { ACCENT_PRESETS, BACKGROUND_PRESETS, type AccentPresetId, type BackgroundPresetId } from "@/lib/themePresets";
+import { SettingsSection } from "./SettingsSection";
 import { TabbedPresetPicker } from "./TabbedPresetPicker";
 
 // ----------------------------------------------------------------------------
@@ -63,13 +65,12 @@ export function ThemeSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Theme</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Personalize how the software looks for you — pick from a set of pre-made looks, no color-blending required.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-4 space-y-6">
+    <SettingsSection
+      icon={Palette}
+      title="Theme"
+      description="Personalize how the software looks for you — pick from a set of pre-made looks, no color-blending required."
+    >
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <p className="text-sm font-medium text-gray-700">Background</p>
           <p className="mb-2 mt-0.5 text-sm text-gray-500">
@@ -102,6 +103,6 @@ export function ThemeSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

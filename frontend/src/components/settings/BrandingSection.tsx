@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { ImageIcon } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText } from "@/components/form";
+import { Button, ErrorText } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // Branding — just the logo for now. It shows up in four places once
@@ -68,19 +70,18 @@ export function BrandingSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Branding</h2>
-      <p className="mt-1 text-sm text-gray-500">
-        Your logo — shown on invoices, your landing page, marketing e-blasts, and here in the dashboard.
-      </p>
-
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+    <SettingsSection
+      icon={ImageIcon}
+      title="Branding"
+      description="Your logo — shown on invoices, your landing page, marketing e-blasts, and here in the dashboard."
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <p className="text-sm font-medium text-gray-700">Logo</p>
           {account?.logo && (
             <div className="mt-2 flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={account.logo} alt="Current logo" className="h-16 w-16 rounded-md border border-gray-200 object-cover" />
+              <img src={account.logo} alt="Current logo" className="h-16 w-16 rounded-xl border border-gray-200 object-cover shadow-sm" />
               <button
                 type="button"
                 onClick={handleRemove}
@@ -107,6 +108,6 @@ export function BrandingSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { ListChecks } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { Button, Card, ErrorText } from "@/components/form";
+import { Button, ErrorText } from "@/components/form";
+import { SettingsSection } from "./SettingsSection";
 
 // ----------------------------------------------------------------------------
 // Two calendar-behavior preferences that don't fit neatly under Operating
@@ -54,11 +56,12 @@ export function BookingRulesSection() {
   }
 
   return (
-    <Card className="p-6">
-      <h2 className="text-lg font-medium">Booking Rules</h2>
-      <p className="mt-1 text-sm text-gray-500">How the Calendar behaves when scheduling appointments.</p>
-
-      <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+    <SettingsSection
+      icon={ListChecks}
+      title="Booking Rules"
+      description="How the Calendar behaves when scheduling appointments."
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -89,10 +92,10 @@ export function BookingRulesSection() {
                 key={option.value}
                 type="button"
                 onClick={() => setDefaultView(option.value)}
-                className={`rounded-md border px-3 py-1.5 text-sm ${
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
                   defaultView === option.value
                     ? "border-[var(--accent-600,#059669)] bg-[var(--accent-50,#ecfdf5)] text-[var(--accent-700,#047857)]"
-                    : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 {option.label}
@@ -109,6 +112,6 @@ export function BookingRulesSection() {
           <ErrorText>{error}</ErrorText>
         </div>
       </form>
-    </Card>
+    </SettingsSection>
   );
 }

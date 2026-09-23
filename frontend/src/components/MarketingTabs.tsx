@@ -20,7 +20,7 @@ export function MarketingTabs() {
   const pathname = usePathname();
 
   return (
-    <div className="flex gap-4 border-b border-gray-200">
+    <div className="inline-flex gap-1 rounded-xl bg-gray-100 p-1">
       {TABS.map((tab) => {
         // Campaigns has its own nested detail route
         // (/dashboard/marketing/campaigns/<id>), so "active" means
@@ -30,10 +30,8 @@ export function MarketingTabs() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`-mb-px border-b-2 px-1 pb-2 text-sm font-medium ${
-              active
-                ? "border-[var(--accent-600,#059669)] text-[var(--accent-700,#047857)]"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+            className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
+              active ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {tab.label}
