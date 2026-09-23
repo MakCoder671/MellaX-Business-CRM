@@ -80,10 +80,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // this asks the backend "who does this token belong to, and is it
       // still valid?"
       const me = await apiFetch<Account>("/api/accounts/me/");
-      console.log("[v0] refreshAccount ok", me);
       setAccount(me);
-    } catch (err) {
-      console.log("[v0] refreshAccount failed", err, "token was", window.localStorage.getItem("mellax_token"));
+    } catch {
       // Token missing, expired, or invalid — just treat it as "not logged in."
       setAccount(null);
       setToken(null);
