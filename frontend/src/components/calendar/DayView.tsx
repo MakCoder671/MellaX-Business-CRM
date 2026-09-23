@@ -55,7 +55,7 @@ function DayNav({
   setDate: React.Dispatch<React.SetStateAction<Date>>;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <button
         onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1))}
         className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"
@@ -167,7 +167,7 @@ export function DayView({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <DayNav date={date} setDate={setDate} />
         <Button onClick={() => setAddFormTime(addFormTime === null ? minutesToHHMM(rangeStart) : null)}>
           {addFormTime !== null ? "Cancel" : "Add appointment"}

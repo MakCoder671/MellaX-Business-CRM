@@ -108,7 +108,7 @@ export function WeekView({
 
   return (
     <div>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setWeekStart((d) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 7))}
           className="rounded-md border border-[var(--cal-600,#059669)]/25 px-2 py-1 text-sm text-gray-600 hover:bg-[var(--cal-50,#ecfdf5)]"

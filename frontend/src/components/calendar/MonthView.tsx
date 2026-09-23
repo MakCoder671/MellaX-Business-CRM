@@ -73,7 +73,7 @@ export function MonthView({
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-base font-medium">
           {viewMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
         </h3>
@@ -182,7 +182,7 @@ export function MonthView({
           day, see what's booked, add something" actually happens, since
           the grid cells above are too small to hold full details. */}
       <div className="mt-4 border-t border-gray-200 pt-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-sm font-medium text-gray-700">
             {selectedDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
             {isClosedDay(hours, selectedDate) && <span className="ml-2 text-xs text-gray-400">(Closed)</span>}
