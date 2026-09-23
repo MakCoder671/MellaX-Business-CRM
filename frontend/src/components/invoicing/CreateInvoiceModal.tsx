@@ -507,8 +507,8 @@ export function CreateInvoiceModal({
             </ul>
           )}
 
-          <div className="mt-3 flex items-end gap-3">
-            <label className="flex-1 text-sm">
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="min-w-[140px] flex-1 text-sm">
               Tender type
               <select
                 value={tenderTypeId}

@@ -101,9 +101,9 @@ export function OperatingHoursSection() {
             .map((day) => (
               <div
                 key={day.day_of_week}
-                className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm"
+                className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2 text-sm sm:flex-row sm:items-center sm:gap-3"
               >
-                <label className="flex w-32 items-center gap-2">
+                <label className="flex w-32 items-center gap-2 shrink-0">
                   <input
                     type="checkbox"
                     checked={day.is_open}
@@ -121,7 +121,7 @@ export function OperatingHoursSection() {
                   {dayLabel(day.day_of_week)}
                 </label>
                 {day.is_open ? (
-                  <>
+                  <div className="flex items-center gap-3">
                     <input
                       type="time"
                       value={day.open_time?.slice(0, 5) ?? "09:00"}
@@ -135,7 +135,7 @@ export function OperatingHoursSection() {
                       onChange={(e) => updateDay(day.day_of_week, { close_time: e.target.value })}
                       className="rounded-md border border-gray-300 px-2 py-1"
                     />
-                  </>
+                  </div>
                 ) : (
                   <span className="text-gray-400">Closed</span>
                 )}

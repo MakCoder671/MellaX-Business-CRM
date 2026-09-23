@@ -198,7 +198,7 @@ export default function ReportsPage() {
   // drift out of sync with each other.
   const dateRangeForm = (
     <Card className="p-4">
-      <form onSubmit={loadReport} className="flex items-end gap-3">
+      <form onSubmit={loadReport} className="flex flex-wrap items-end gap-3">
         <Field label="Start" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
         <Field label="End" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         <Button type="submit" disabled={loading}>
@@ -454,14 +454,14 @@ export default function ReportsPage() {
           ) : (
             <Card className="divide-y divide-gray-200">
               {products.map((product) => (
-                <div key={product.id} className="flex items-center justify-between p-4">
+                <div key={product.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-gray-500">${product.price}</p>
                   </div>
 
                   {editingProductId === product.id ? (
-                    <div className="flex items-end gap-3">
+                    <div className="flex flex-wrap items-end gap-3">
                       <label className="text-sm">
                         In stock
                         <input

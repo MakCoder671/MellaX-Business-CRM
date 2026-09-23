@@ -305,17 +305,20 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-6 rounded-xl bg-gray-50/70 px-5 py-3 sm:gap-8">
+        {/* grid below `sm` (no room for the dividers' flex row to sit on
+            one line without overflowing), back to today's flex-with-
+            dividers row at `sm` and up. */}
+        <div className="grid grid-cols-3 gap-3 rounded-xl bg-gray-50/70 px-5 py-3 sm:flex sm:items-center sm:gap-8">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Lifetime spent</p>
             <p className="mt-0.5 font-mono text-lg font-semibold text-gray-900">${lifetimeSpent.toFixed(2)}</p>
           </div>
-          <div className="h-8 w-px bg-gray-200" />
+          <div className="hidden h-8 w-px bg-gray-200 sm:block" />
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Visits</p>
             <p className="mt-0.5 text-lg font-semibold text-gray-900">{visitCount}</p>
           </div>
-          <div className="h-8 w-px bg-gray-200" />
+          <div className="hidden h-8 w-px bg-gray-200 sm:block" />
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Next visit</p>
             <p className="mt-0.5 text-sm font-semibold text-gray-900">

@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   Building2,
   LayoutDashboard,
   LogOut,
   Megaphone,
+  Menu,
   Package,
   Settings as SettingsIcon,
   Users,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 
@@ -44,6 +47,15 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
   const pathname = usePathname(); // the current URL path, e.g. "/dashboard/clients" — used to highlight the active nav link
   const router = useRouter();
   const { account, logout } = useAuth();
+
+  // Below `lg` (1024px — covers phones AND iPads, since iPad landscape
+  // is exactly 1024px), the sidebar becomes an off-canvas drawer instead
+  // of always-visible — there just isn't room for a permanent 256px nav
+  // column on a screen that size. At `lg` and up this state is never
+  // read (the drawer classes below are all overridden back to the
+  // original static layout via lg: variants), so desktop behavior is
+  // completely unchanged.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Which nav item the CURRENT page belongs to — checked in array order
   // but skipping Overview's exact-match check until last, since
@@ -78,12 +90,52 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
         className="theme-bg flex min-h-screen flex-1"
         style={{ background: "var(--app-bg, #f9fafb)", backgroundAttachment: "fixed" }}
       >
+        {/* Backdrop — only ever rendered while the drawer is open, and
+            `lg:hidden` means it's never shown at desktop widths even if
+            sidebarOpen were somehow true there. Tapping it closes the
+            drawer, same as tapping a nav link does. */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
         {/* print:hidden on the sidebar and header below: pages like the
             printable invoice (dashboard/invoices/[id]/print) live under
             this same layout for convenience, but the browser's actual
             print output should show just the invoice, not the app chrome
-            around it — the on-screen view is unaffected either way. */}
-        <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200/80 p-3 print:hidden">
+            around it — the on-screen view is unaffected either way.
+
+            Below `lg`: an off-canvas drawer (fixed, slides in/out via
+            translate-x, closed by default). At `lg` and up: `lg:static
+            lg:translate-none` puts it back to exactly today's always-
+            visible layout. `translate-none` specifically, not just
+            leaving translate-x-0 — Tailwind v4's translate-x-* utilities
+            set the standalone CSS `translate` property (not `transform`),
+            and ANY non-"none" value there (even "0px", which is what
+            translate-x-0 computes to) still turns this element into the
+            containing block for the fixed-position design-art div nested
+            inside it below, which needs to stay positioned relative to
+            the actual viewport at desktop widths for the "art visible
+            even on a tall Overview page" fix to keep working. Confirmed
+            with getComputedStyle in a real browser, not just reasoned
+            about — translate-x-0 alone left the sidebar rendered 256px
+            off-screen at desktop widths even though `transform` itself
+            correctly read "none". */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r border-gray-200/80 p-3 transition-transform duration-200 print:hidden lg:static lg:translate-none ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+          style={{ background: "var(--app-bg, #f9fafb)" }}
+        >
+          <button
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            className="absolute right-2 top-2 rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 lg:hidden"
+          >
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
           {/* Workspace header — the business's OWN identity is the
               primary brand here, not the "MellaX" product name. A
               bigger logo badge + the actual business_name, styled like
@@ -93,6 +145,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               down instead of competing for this spot. */}
           <Link
             href="/dashboard/settings"
+            onClick={() => setSidebarOpen(false)}
             className="group flex items-center gap-3 rounded-xl border border-transparent p-2 transition-colors hover:border-gray-200/80 hover:bg-white"
           >
             {account?.logo ? (
@@ -124,6 +177,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setSidebarOpen(false)}
                   className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                     active
                       ? "bg-[var(--accent-50,#ecfdf5)] font-medium text-[var(--accent-700,#047857)]"
@@ -188,14 +242,21 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
             </button>
           </div>
         </aside>
-        <div className="flex flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-gray-200/80 px-6 py-3.5 print:hidden">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="flex items-center gap-3 border-b border-gray-200/80 px-4 py-3.5 sm:px-6 print:hidden">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Open menu"
+              className="-ml-1 rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+            >
+              <Menu className="h-5 w-5" strokeWidth={2} />
+            </button>
             <h1 className="text-base font-semibold text-gray-900">{activeNav?.label ?? "Dashboard"}</h1>
           </header>
           {/* {children} is where the actual page content (Clients,
               Invoices, etc) gets slotted in — this is the "layout wraps
               page" pattern that's core to how Next.js's App Router works. */}
-          <main className="flex-1 p-6 print:p-0">{children}</main>
+          <main className="flex-1 p-4 sm:p-6 print:p-0">{children}</main>
         </div>
       </div>
       {/* Checked once per dashboard load, regardless of which page —

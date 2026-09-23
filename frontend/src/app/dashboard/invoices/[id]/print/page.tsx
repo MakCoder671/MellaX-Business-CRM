@@ -103,7 +103,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
       {/* The actual printable document — this is the part `window.print()`
           captures, and the only part still visible once dashboard/layout.tsx's
           print:hidden sidebar/header disappear from the print output. */}
-      <div className="border border-gray-200 bg-white p-10 print:border-0 print:p-0">
+      <div className="border border-gray-200 bg-white p-4 sm:p-10 print:border-0 print:p-0">
         <div className="flex items-start justify-between">
           <div>
             {account.logo && (
@@ -129,6 +129,11 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
           {client.phone && <p className="text-sm text-gray-500">{client.phone}</p>}
         </div>
 
+        {/* overflow-x-auto for the on-screen view (before someone hits
+            Print) on a narrow phone — print:overflow-visible so the
+            actual printed/PDF output never clips a column instead of
+            just letting it flow onto the page normally. */}
+        <div className="overflow-x-auto print:overflow-visible">
         <table className="mt-8 w-full text-sm">
           <thead>
             <tr className="border-b border-gray-300 text-left text-xs uppercase tracking-wide text-gray-400">
@@ -152,6 +157,7 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
             ))}
           </tbody>
         </table>
+        </div>
 
         <div className="ml-auto mt-4 w-48 space-y-1 text-sm">
           <div className="flex justify-between text-gray-500">

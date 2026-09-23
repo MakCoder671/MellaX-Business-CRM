@@ -516,7 +516,7 @@ export function InvoiceView({
 
         <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
           <div className="accent-bg h-1.5 w-full" />
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
         <div className="flex items-start justify-between">
           <div>
             {account.logo ? (
@@ -550,7 +550,15 @@ export function InvoiceView({
           {client.phone && <p className="text-sm text-gray-500">{client.phone}</p>}
         </div>
 
-        <table className="mt-8 w-full text-sm">
+        {/* overflow-x-auto: this table (Item/Qty/Price/Discount/Amount,
+            +1 column while editing) is wider than a phone screen once a
+            service has a longer name — without this it would silently
+            clip the rightmost column, since the "paper" card around it
+            is overflow-hidden for its rounded corners. Scrolling just
+            this table horizontally keeps the rest of the invoice
+            (letterhead, totals) from needing to scroll too. */}
+        <div className="mt-8 overflow-x-auto">
+        <table className="w-full text-sm">
           <thead>
             <tr className="border-b-2 border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
               <th className="pb-2">Item</th>
@@ -841,6 +849,7 @@ export function InvoiceView({
             )}
           </tbody>
         </table>
+        </div>
 
         {editing && !addingLineItem && editingLineItemId === null && removingLineItemId === null && (
           <button

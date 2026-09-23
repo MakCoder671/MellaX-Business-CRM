@@ -151,7 +151,15 @@ export function WeekView({
         </div>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-md border border-[var(--cal-600,#059669)]/25 select-none">
+      {/* overflow-x-auto (not overflow-hidden) — on a narrow phone, 7 day
+          columns squeeze down to an unreadable width if forced to fit;
+          letting the grid scroll sideways at a real min-width per column
+          (see min-w-16 below on both this header row and the body's day
+          columns, which scroll together since they're both inside this
+          one shared scroll container) is the same "week view scrolls
+          sideways on mobile" pattern Google/Apple Calendar use, rather
+          than cramming seven columns into one screen no matter how it looks. */}
+      <div className="mt-4 overflow-x-auto rounded-md border border-[var(--cal-600,#059669)]/25 select-none">
         {/* Day-name header row — same gutter width + divider as the body
             below, so the day columns line up exactly with their names. */}
         <div className="flex border-b border-[var(--cal-600,#059669)]/25 bg-[var(--cal-50,#ecfdf5)]">
@@ -162,7 +170,7 @@ export function WeekView({
             return (
               <div
                 key={date.toDateString()}
-                className={`flex-1 border-r border-[var(--cal-600,#059669)]/15 py-1.5 text-center text-xs font-medium last:border-r-0 ${
+                className={`min-w-16 flex-1 border-r border-[var(--cal-600,#059669)]/15 py-1.5 text-center text-xs font-medium last:border-r-0 ${
                   isToday ? "bg-[var(--cal-100,#d1fae5)] text-[var(--cal-700,#047857)]" : "text-gray-600"
                 }`}
               >
@@ -201,7 +209,7 @@ export function WeekView({
             return (
               <div
                 key={date.toDateString()}
-                className={`relative flex-1 border-r border-[var(--cal-600,#059669)]/15 last:border-r-0 ${isToday ? "bg-[var(--cal-50,#ecfdf5)]/30" : ""}`}
+                className={`relative min-w-16 flex-1 border-r border-[var(--cal-600,#059669)]/15 last:border-r-0 ${isToday ? "bg-[var(--cal-50,#ecfdf5)]/30" : ""}`}
               >
                 {!isOpen ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-100 text-[11px] text-gray-400">
