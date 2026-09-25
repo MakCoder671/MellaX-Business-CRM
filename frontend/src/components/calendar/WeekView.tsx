@@ -21,6 +21,7 @@ import {
   appointmentTextTier,
   businessHoursFor,
   isNoShow,
+  layoutOverlaps,
   serviceName,
   startOfWeek,
 } from "./helpers";
@@ -249,7 +250,7 @@ export function WeekView({
                       );
                     })}
 
-                    {dayAppointments.map((appt, index) => {
+                    {layoutOverlaps(dayAppointments).map(({ appointment: appt, column, totalColumns }, index) => {
                       const start = minutesSinceMidnight(new Date(appt.datetime));
                       const top = minutesToPx(start, rangeStart);
                       const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
@@ -266,12 +267,22 @@ export function WeekView({
                       // has - just tight (1 line) vs everything else
                       // (name bold + service tag on their own two lines).
                       const tier = appointmentTextTier(appt.duration_minutes);
+                      // Same overlap-columns idea as DayView — see the
+                      // comment there. Gap's smaller here (2px vs 4px)
+                      // since a week column is already only ~64px wide at
+                      // minimum; splitting it further needs to stay tight.
+                      const widthPercent = 100 / totalColumns;
                       return (
                         <button
                           key={appt.id}
                           onClick={() => onSelectAppointment(appt)}
-                          className={`absolute left-0.5 right-0.5 overflow-hidden rounded border px-1 py-0.5 text-left leading-tight shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
-                          style={{ top: top + 1, height: Math.max(height - 2, 4) }}
+                          className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left leading-tight shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
+                          style={{
+                            top: top + 1,
+                            height: Math.max(height - 2, 4),
+                            left: `calc(${column * widthPercent}% + 2px)`,
+                            width: `calc(${widthPercent}% - 4px)`,
+                          }}
                         >
                           {tier === "tight" ? (
                             <p className="flex items-center gap-1 truncate text-[9px] font-bold">

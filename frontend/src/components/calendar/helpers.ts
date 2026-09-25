@@ -1,3 +1,4 @@
+import { minutesSinceMidnight } from "./gridHelpers";
 import type { Appointment, BusinessHour, Client, Service } from "./types";
 
 // ----------------------------------------------------------------------------
@@ -174,6 +175,71 @@ export function appointmentChipClasses(status: Appointment["status"], alternate 
   return alternate
     ? "bg-[var(--cal-300,#6ee7b7)] text-[var(--cal-800,#065f46)] hover:bg-[var(--cal-500,#10b981)]"
     : "bg-[var(--cal-100,#d1fae5)] text-[var(--cal-800,#065f46)] hover:bg-[var(--cal-300,#6ee7b7)]";
+}
+
+// Two appointments that genuinely OVERLAP in time (as opposed to just
+// sitting back-to-back — see appointmentBlockClasses' `alternate` for
+// that, unrelated case) used to both render as full-width blocks on the
+// Day/Week time grid, meaning whichever one came later in the array
+// simply painted on top of and hid the earlier one for however long they
+// overlapped. This only comes up when double-booking is allowed
+// (Settings > Calendar > Booking Rules) or an appointment runs long
+// enough to bump into the next one's start time, but when it does, a
+// client's entire booking could silently disappear behind another one.
+//
+// Fix: appointments that overlap get their own side-by-side column
+// instead, the same way Google/Apple Calendar lay out a double-booked
+// slot. A classic calendar-layout sweep — walk appointments in start-time
+// order, track which columns are still "occupied" (their appointment
+// hasn't ended yet) at the current point, and hand each new appointment
+// the lowest column number nothing else currently occupies. Appointments
+// that all connect through overlaps (A overlaps B, B overlaps C, even if
+// A and C don't directly touch) share the same totalColumns width, so
+// the whole connected group reads as one consistent split instead of
+// each pair computing its own — a lone appointment with nothing else
+// anywhere near it still just gets column 0 of 1 (full width, unchanged
+// from before this existed).
+export type AppointmentLayout = { appointment: Appointment; column: number; totalColumns: number };
+
+export function layoutOverlaps(appointments: Appointment[]): AppointmentLayout[] {
+  const sorted = [...appointments].sort(
+    (a, b) => minutesSinceMidnight(new Date(a.datetime)) - minutesSinceMidnight(new Date(b.datetime))
+  );
+
+  type Placed = { appointment: Appointment; column: number; end: number };
+  const results: AppointmentLayout[] = [];
+  let active: Placed[] = []; // still-open appointments in the CURRENT cluster
+  let cluster: Placed[] = []; // every appointment placed in the current cluster so far
+
+  function flushCluster() {
+    if (cluster.length === 0) return;
+    const totalColumns = Math.max(...cluster.map((p) => p.column)) + 1;
+    for (const p of cluster) results.push({ appointment: p.appointment, column: p.column, totalColumns });
+    cluster = [];
+  }
+
+  for (const appointment of sorted) {
+    const start = minutesSinceMidnight(new Date(appointment.datetime));
+    const end = start + appointment.duration_minutes;
+
+    active = active.filter((p) => p.end > start);
+    // The previous cluster has fully ended before this appointment even
+    // starts (nothing still active) — safe to finalize its width and
+    // move on, rather than letting one busy morning force every
+    // appointment for the rest of the day to share its column count.
+    if (active.length === 0) flushCluster();
+
+    const usedColumns = new Set(active.map((p) => p.column));
+    let column = 0;
+    while (usedColumns.has(column)) column++;
+
+    const placed: Placed = { appointment, column, end };
+    active.push(placed);
+    cluster.push(placed);
+  }
+  flushCluster();
+
+  return results;
 }
 
 // A plain boolean rather than a rendered icon/glyph — helpers.ts is a

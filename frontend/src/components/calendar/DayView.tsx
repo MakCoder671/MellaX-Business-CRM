@@ -24,6 +24,7 @@ import {
   businessHoursFor,
   formatDuration,
   isNoShow,
+  layoutOverlaps,
   serviceName,
 } from "./helpers";
 import type { Appointment, BusinessHour, Client, Service } from "./types";
@@ -247,7 +248,7 @@ export function DayView({
             );
           })}
 
-          {dayAppointments.map((appt, index) => {
+          {layoutOverlaps(dayAppointments).map(({ appointment: appt, column, totalColumns }, index) => {
             const start = minutesSinceMidnight(new Date(appt.datetime));
             const top = minutesToPx(start, rangeStart);
             const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
@@ -286,12 +287,25 @@ export function DayView({
                 <span className="truncate">{name}</span>
               </p>
             );
+            // A lone appointment (totalColumns 1, the overwhelming common
+            // case) gets the exact same 4px inset as before this existed.
+            // Two or more genuinely-overlapping appointments (see
+            // layoutOverlaps in helpers.ts) instead split the row's width
+            // evenly, each in its own column with a small gap, so a
+            // double-booked slot shows both appointments side by side
+            // instead of one full-width block hiding the other underneath it.
+            const widthPercent = 100 / totalColumns;
             return (
               <button
                 key={appt.id}
                 onClick={() => onSelectAppointment(appt)}
-                className={`absolute left-1 right-1 overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
-                style={{ top: top + 1, height: Math.max(height - 2, 4) }}
+                className={`absolute overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
+                style={{
+                  top: top + 1,
+                  height: Math.max(height - 2, 4),
+                  left: `calc(${column * widthPercent}% + 4px)`,
+                  width: `calc(${widthPercent}% - 8px)`,
+                }}
               >
                 {tier === "tight" ? (
                   <p className="flex items-center gap-1 truncate text-[10px] font-bold leading-tight">
