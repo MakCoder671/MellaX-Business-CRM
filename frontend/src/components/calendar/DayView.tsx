@@ -88,6 +88,7 @@ export function DayView({
   appointments,
   clients,
   services,
+  timeZone,
   onChanged,
   onClientAdded,
   onSelectAppointment,
@@ -97,6 +98,7 @@ export function DayView({
   appointments: Appointment[];
   clients: Client[];
   services: Service[];
+  timeZone: string;
   onChanged: () => void;
   onClientAdded: () => void;
   onSelectAppointment: (appointment: Appointment) => void;
@@ -104,7 +106,7 @@ export function DayView({
   const [date, setDate] = useState(() => new Date());
   const [addFormTime, setAddFormTime] = useState<string | null>(null); // "HH:MM" of the slot last clicked, or null when the form's closed
 
-  const dayAppointments = appointmentsOn(appointments, date);
+  const dayAppointments = appointmentsOn(appointments, date, timeZone);
   const businessHour = businessHoursFor(hours, date);
 
   function clientNameFor(clientId: number) {
@@ -129,6 +131,7 @@ export function DayView({
               <li key={appt.id}>
                 <button
                   onClick={() => onSelectAppointment(appt)}
+                  data-tour-id="appointment-block"
                   className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-left text-sm text-gray-600 hover:bg-gray-100"
                 >
                   <span className="flex items-center gap-1.5 font-medium">
@@ -137,7 +140,7 @@ export function DayView({
                     )}
                     {clientNameFor(appt.client)}
                   </span>
-                  <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime)))}</span>
+                  <span>{minutesToLabel(minutesSinceMidnight(new Date(appt.datetime), timeZone))}</span>
                 </button>
               </li>
             ))}
@@ -158,7 +161,7 @@ export function DayView({
   let rangeStart = timeToMinutes(businessHour.open_time ?? "09:00:00");
   let rangeEnd = timeToMinutes(businessHour.close_time ?? "17:00:00");
   for (const appt of dayAppointments) {
-    const start = minutesSinceMidnight(new Date(appt.datetime));
+    const start = minutesSinceMidnight(new Date(appt.datetime), timeZone);
     rangeStart = Math.min(rangeStart, floorTo15(start));
     rangeEnd = Math.max(rangeEnd, ceilTo15(start + appt.duration_minutes));
   }
@@ -170,7 +173,10 @@ export function DayView({
     <div>
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
         <DayNav date={date} setDate={setDate} />
-        <Button onClick={() => setAddFormTime(addFormTime === null ? minutesToHHMM(rangeStart) : null)}>
+        <Button
+          onClick={() => setAddFormTime(addFormTime === null ? minutesToHHMM(rangeStart) : null)}
+          data-tour-id="add-appointment-button"
+        >
           {addFormTime !== null ? "Cancel" : "Add appointment"}
         </Button>
       </div>
@@ -188,6 +194,7 @@ export function DayView({
             services={services}
             date={date}
             initialTime={addFormTime}
+            timeZone={timeZone}
             onClientAdded={onClientAdded}
             onDone={() => {
               setAddFormTime(null);
@@ -248,8 +255,8 @@ export function DayView({
             );
           })}
 
-          {layoutOverlaps(dayAppointments).map(({ appointment: appt, column, totalColumns }, index) => {
-            const start = minutesSinceMidnight(new Date(appt.datetime));
+          {layoutOverlaps(dayAppointments, timeZone).map(({ appointment: appt, column, totalColumns }, index) => {
+            const start = minutesSinceMidnight(new Date(appt.datetime), timeZone);
             const top = minutesToPx(start, rangeStart);
             const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
             const alternate = index % 2 === 1;
@@ -299,6 +306,7 @@ export function DayView({
               <button
                 key={appt.id}
                 onClick={() => onSelectAppointment(appt)}
+                data-tour-id="appointment-block"
                 className={`absolute overflow-hidden rounded-md border px-2 py-1 text-left shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
                 style={{
                   top: top + 1,

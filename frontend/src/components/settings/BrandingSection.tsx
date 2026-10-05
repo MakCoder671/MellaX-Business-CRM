@@ -76,7 +76,7 @@ export function BrandingSection() {
       description="Your logo, shown on invoices, your landing page, marketing e-blasts, and here in the dashboard."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
+        <div data-tour-id="logo-upload">
           <p className="text-sm font-medium text-gray-700">Logo</p>
           {account?.logo && (
             <div className="mt-2 flex items-center gap-3">

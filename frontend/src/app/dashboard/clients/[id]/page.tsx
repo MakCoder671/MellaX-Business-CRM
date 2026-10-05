@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { formatAddressLines } from "@/lib/address";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 import { CreateInvoiceModal } from "@/components/invoicing/CreateInvoiceModal";
 
@@ -45,6 +46,9 @@ type Client = {
   email: string;
   phone: string;
   address: string;
+  city: string;
+  state: string;
+  zip_code: string;
 };
 
 type ClientNote = {
@@ -113,6 +117,9 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zipCode, setZipCode] = useState("");
   const [infoError, setInfoError] = useState<string | null>(null);
   const [savingInfo, setSavingInfo] = useState(false);
 
@@ -140,6 +147,9 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
       setEmail(c.email);
       setPhone(c.phone);
       setAddress(c.address);
+      setCity(c.city);
+      setState(c.state);
+      setZipCode(c.zip_code);
     });
   }
 
@@ -185,7 +195,7 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
     try {
       const updated = await apiFetch<Client>(`/api/clients/${id}/`, {
         method: "PATCH",
-        body: { first_name: firstName, last_name: lastName, email, phone, address },
+        body: { first_name: firstName, last_name: lastName, email, phone, address, city, state, zip_code: zipCode },
       });
       setClient(updated);
       setEditing(false);
@@ -352,6 +362,17 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
               <Field label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               <Field label="Phone number" value={phone} onChange={(e) => setPhone(e.target.value)} />
               <Field label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+              <div className="flex flex-wrap gap-3">
+                <div className="min-w-[160px] flex-1">
+                  <Field label="City" value={city} onChange={(e) => setCity(e.target.value)} />
+                </div>
+                <div className="w-24">
+                  <Field label="State" value={state} onChange={(e) => setState(e.target.value)} />
+                </div>
+                <div className="w-28">
+                  <Field label="Zip" value={zipCode} onChange={(e) => setZipCode(e.target.value)} />
+                </div>
+              </div>
               <div className="flex items-center gap-3">
                 <Button type="submit" disabled={savingInfo}>
                   {savingInfo ? "Saving…" : "Save"}
@@ -367,6 +388,9 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
                     setEmail(client.email);
                     setPhone(client.phone);
                     setAddress(client.address);
+                    setCity(client.city);
+                    setState(client.state);
+                    setZipCode(client.zip_code);
                   }}
                 >
                   Cancel
@@ -394,7 +418,15 @@ export default function ClientProfilePage({ params }: PageProps<"/dashboard/clie
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" strokeWidth={2} />
                 <div>
                   <dt className="text-xs font-medium uppercase tracking-wide text-gray-400">Address</dt>
-                  <dd className="mt-0.5 font-medium text-gray-900">{client.address || "—"}</dd>
+                  {formatAddressLines(client).length > 0 ? (
+                    formatAddressLines(client).map((line) => (
+                      <dd key={line} className="mt-0.5 font-medium text-gray-900">
+                        {line}
+                      </dd>
+                    ))
+                  ) : (
+                    <dd className="mt-0.5 font-medium text-gray-900">—</dd>
+                  )}
                 </div>
               </div>
             </dl>

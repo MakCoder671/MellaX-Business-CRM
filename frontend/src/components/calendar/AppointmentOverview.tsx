@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { formatAddressLines } from "@/lib/address";
+import { formatInTimeZone, utcToZonedParts, zonedTimeToUtc } from "@/lib/timezone";
 import { Button, Card, ErrorText } from "@/components/form";
 import { CreateInvoiceModal } from "@/components/invoicing/CreateInvoiceModal";
+import { useTour } from "@/components/onboarding/TourContext";
 
 import { DURATION_OPTIONS, STATUS_LABELS, formatDuration, statusBadgeClass } from "./helpers";
 import type { Appointment, Client, Service } from "./types";
@@ -20,32 +23,43 @@ import type { Appointment, Client, Service } from "./types";
 // invoice, same flow as the client profile's Appointments tab).
 // ----------------------------------------------------------------------------
 
-type FullClient = { id: number; full_name: string; email: string; phone: string; address: string };
+type FullClient = {
+  id: number;
+  full_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+};
 type Invoice = { id: number; invoice_number: string; appointment: number | null };
 
-function toDateInputValue(d: Date) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+// Both read the WALL-CLOCK values in the business's own zone (not the
+// viewing browser's) — same reasoning as every other appointment-datetime
+// spot in the calendar, see lib/timezone.ts.
+function toDateInputValue(d: Date, timeZone: string) {
+  const { year, month, day } = utcToZonedParts(d, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function toTimeInputValue(d: Date) {
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+function toTimeInputValue(d: Date, timeZone: string) {
+  const { hour, minute } = utcToZonedParts(d, timeZone);
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 export function AppointmentOverview({
   appointment,
   clients,
   services,
+  timeZone,
   onClose,
   onChanged,
 }: {
   appointment: Appointment;
   clients: Client[];
   services: Service[];
+  timeZone: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -57,10 +71,11 @@ export function AppointmentOverview({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const { active, currentStep, nextStep } = useTour();
   const [clientId, setClientId] = useState(appointment.client);
   const [serviceId, setServiceId] = useState<number | "">(appointment.service ?? "");
-  const [date, setDate] = useState(() => toDateInputValue(new Date(appointment.datetime)));
-  const [time, setTime] = useState(() => toTimeInputValue(new Date(appointment.datetime)));
+  const [date, setDate] = useState(() => toDateInputValue(new Date(appointment.datetime), timeZone));
+  const [time, setTime] = useState(() => toTimeInputValue(new Date(appointment.datetime), timeZone));
   const [duration, setDuration] = useState(appointment.duration_minutes);
   const [notes, setNotes] = useState(appointment.notes);
 
@@ -110,6 +125,12 @@ export function AppointmentOverview({
     // appointment to "completed" once there's a real invoice to show
     // for it (see handleInvoiceSaved below).
     setShowInvoiceModal(true);
+    // The "Create an invoice" tour's checkout-button step is autoAdvance
+    // (see TourContext.tsx) — this click is what unmounts that button and
+    // opens the invoice form, so this is where the tour needs to move to
+    // its next step rather than a manual Next button that couldn't exist
+    // for a button that's about to disappear.
+    if (active?.tourId === "invoice" && currentStep?.targetId === "checkout-button") nextStep();
   }
 
   async function handleInvoiceSaved() {
@@ -122,11 +143,11 @@ export function AppointmentOverview({
     e.preventDefault();
     const [hh, mm] = time.split(":").map(Number);
     const [yyyy, mo, dd] = date.split("-").map(Number);
-    const localDatetime = new Date(yyyy, mo - 1, dd, hh, mm, 0, 0);
+    const zonedDatetime = zonedTimeToUtc(yyyy, mo, dd, hh, mm, timeZone);
     const updated = await patchAppointment({
       client: clientId,
       service: serviceId || null,
-      datetime: localDatetime.toISOString(),
+      datetime: zonedDatetime.toISOString(),
       duration_minutes: duration,
       notes,
     });
@@ -259,12 +280,17 @@ export function AppointmentOverview({
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Client</p>
                 <p className="mt-0.5 font-medium text-gray-900">{clientDisplayName}</p>
                 <p className="text-gray-500">{fullClient?.email || fullClient?.phone || "—"}</p>
-                {fullClient?.address && <p className="text-gray-500">{fullClient.address}</p>}
+                {fullClient &&
+                  formatAddressLines(fullClient).map((line) => (
+                    <p key={line} className="text-gray-500">
+                      {line}
+                    </p>
+                  ))}
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-gray-400">Appointment</p>
                 <p className="mt-0.5 text-gray-900">
-                  {new Date(current.datetime).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                  {formatInTimeZone(new Date(current.datetime), timeZone, "MMM d, yyyy, h:mm a")}
                 </p>
                 <p className="text-gray-500">
                   {formatDuration(current.duration_minutes)} · {serviceName(current.service)}
@@ -324,7 +350,7 @@ export function AppointmentOverview({
                     Invoiced #{invoice.invoice_number}
                   </Link>
                 ) : current.status === "completed" || current.status === "scheduled" ? (
-                  <Button onClick={handleCheckout} disabled={busy}>
+                  <Button onClick={handleCheckout} disabled={busy} data-tour-id="checkout-button">
                     {current.status === "completed" ? "Create invoice" : "Checkout"}
                   </Button>
                 ) : null}

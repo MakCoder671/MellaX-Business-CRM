@@ -22,6 +22,9 @@ type Client = {
   email: string;
   phone: string;
   address: string;
+  city: string;
+  state: string;
+  zip_code: string;
 };
 
 export default function ClientsPage() {
@@ -89,7 +92,7 @@ export default function ClientsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Clients</h1>
-        <Button onClick={() => setShowForm((v) => !v)}>
+        <Button onClick={() => setShowForm((v) => !v)} data-tour-id="add-client-button">
           {showForm ? "Cancel" : "Add client"}
         </Button>
       </div>

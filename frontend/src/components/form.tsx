@@ -69,9 +69,21 @@ export function ErrorText({ children }: { children: string | null }) {
 
 // A simple bordered/shadowed box — used as the container for basically
 // every form and panel in the app, so everything has a consistent look.
-export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  "data-tour-id": dataTourId,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  // Explicit, not a full {...props} spread — Card doesn't otherwise
+  // forward arbitrary DOM attributes, and this is the one it needs to
+  // let a Getting Started tour (see components/onboarding/TourSpotlight.tsx)
+  // point at a Card-wrapped section, e.g. SettingsSection.tsx.
+  "data-tour-id"?: string;
+}) {
   return (
-    <div className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className}`}>
+    <div className={`rounded-lg border border-gray-200 bg-white shadow-sm ${className}`} data-tour-id={dataTourId}>
       {children}
     </div>
   );

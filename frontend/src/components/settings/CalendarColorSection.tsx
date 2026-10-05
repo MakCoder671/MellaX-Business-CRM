@@ -64,6 +64,7 @@ export function CalendarColorSection() {
           no matter what&apos;s picked here, so it always stands out.
         </>
       }
+      tourId="settings-calendar-color"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <TabbedPresetPicker

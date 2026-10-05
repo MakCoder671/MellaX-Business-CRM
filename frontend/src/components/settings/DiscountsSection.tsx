@@ -51,6 +51,7 @@ export function DiscountsSection() {
       icon={Tag}
       title="Discounts"
       description="Reusable discounts, selectable when building an invoice."
+      tourId="settings-discounts"
     >
       {discounts && (
         <ul className="divide-y divide-gray-100">

@@ -69,6 +69,7 @@ export function ThemeSection() {
       icon={Palette}
       title="Theme"
       description="Personalize how the software looks for you. Pick from a set of pre-made looks, no color-blending required."
+      tourId="settings-theme"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>

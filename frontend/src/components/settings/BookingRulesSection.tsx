@@ -60,6 +60,7 @@ export function BookingRulesSection() {
       icon={ListChecks}
       title="Booking Rules"
       description="How the Calendar behaves when scheduling appointments."
+      tourId="settings-booking-rules"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
         <label className="flex items-start gap-3">

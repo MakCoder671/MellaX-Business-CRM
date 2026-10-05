@@ -6,6 +6,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Ban, CreditCard, Lock, Mail, Pencil, Printer, RotateCcw, Trash2, User, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { formatAddressLines } from "@/lib/address";
 import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText } from "@/components/form";
 
@@ -452,7 +453,12 @@ export function InvoiceView({
           </button>
         )}
         {!locked && (
-          <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={() => setEditing((v) => !v)}>
+          <Button
+            variant="secondary"
+            className="flex w-full items-center justify-center gap-2"
+            onClick={() => setEditing((v) => !v)}
+            data-tour-id="invoice-view-edit"
+          >
             {editing ? <X className="h-4 w-4" strokeWidth={2} /> : <Pencil className="h-4 w-4" strokeWidth={2} />}
             {editing ? "Done Editing" : "Edit"}
           </Button>
@@ -462,24 +468,36 @@ export function InvoiceView({
             variant="secondary"
             className="flex w-full items-center justify-center gap-2"
             onClick={() => setShowPaymentForm(true)}
+            data-tour-id="invoice-view-record-payment"
           >
             <CreditCard className="h-4 w-4" strokeWidth={2} /> Record Payment
           </Button>
         )}
         {!locked && !isQuote && (
-          <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={() => setShowRefundForm(true)}>
+          <Button
+            variant="secondary"
+            className="flex w-full items-center justify-center gap-2"
+            onClick={() => setShowRefundForm(true)}
+            data-tour-id="invoice-view-refund"
+          >
             <RotateCcw className="h-4 w-4" strokeWidth={2} /> Refund
           </Button>
         )}
-        <Link href={`/dashboard/invoices/${invoice.id}/print`} className="w-full">
+        <Link href={`/dashboard/invoices/${invoice.id}/print`} className="w-full" data-tour-id="invoice-view-print">
           <Button variant="secondary" className="flex w-full items-center justify-center gap-2">
             <Printer className="h-4 w-4" strokeWidth={2} /> Print
           </Button>
         </Link>
-        <Button variant="secondary" className="flex w-full items-center justify-center gap-2" onClick={handleEmail} disabled={emailing}>
+        <Button
+          variant="secondary"
+          className="flex w-full items-center justify-center gap-2"
+          onClick={handleEmail}
+          disabled={emailing}
+          data-tour-id="invoice-view-email"
+        >
           <Mail className="h-4 w-4" strokeWidth={2} /> {emailing ? "Emailing…" : "Email"}
         </Button>
-        <Link href={`/dashboard/clients/${client.id}`} className="w-full">
+        <Link href={`/dashboard/clients/${client.id}`} className="w-full" data-tour-id="invoice-view-client-profile">
           <Button variant="secondary" className="flex w-full items-center justify-center gap-2">
             <User className="h-4 w-4" strokeWidth={2} /> Client profile
           </Button>
@@ -487,7 +505,12 @@ export function InvoiceView({
         {!locked && (
           <>
             <div className="my-1 border-t border-gray-100" />
-            <Button variant="danger" className="flex w-full items-center justify-center gap-2" onClick={handleDelete}>
+            <Button
+              variant="danger"
+              className="flex w-full items-center justify-center gap-2"
+              onClick={handleDelete}
+              data-tour-id="invoice-view-delete"
+            >
               <Trash2 className="h-4 w-4" strokeWidth={2} /> Delete
             </Button>
           </>
@@ -528,7 +551,11 @@ export function InvoiceView({
               </div>
             )}
             <p className="text-lg font-semibold text-gray-900">{account.business_name}</p>
-            {account.address && <p className="text-sm text-gray-500">{account.address}</p>}
+            {formatAddressLines(account).map((line) => (
+              <p key={line} className="text-sm text-gray-500">
+                {line}
+              </p>
+            ))}
             {account.phone && <p className="text-sm text-gray-500">{account.phone}</p>}
           </div>
           <div className="text-right">

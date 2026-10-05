@@ -54,6 +54,7 @@ export function WeekView({
   appointments,
   clients,
   services,
+  timeZone,
   onChanged,
   onClientAdded,
   onSelectAppointment,
@@ -63,6 +64,7 @@ export function WeekView({
   appointments: Appointment[];
   clients: Client[];
   services: Service[];
+  timeZone: string;
   onChanged: () => void;
   onClientAdded: () => void;
   onSelectAppointment: (appointment: Appointment) => void;
@@ -94,9 +96,9 @@ export function WeekView({
     ? Math.max(...openHours.map((h) => timeToMinutes(h.close_time as string)))
     : 17 * 60;
 
-  const weekAppointments = days.flatMap((date) => appointmentsOn(appointments, date));
+  const weekAppointments = days.flatMap((date) => appointmentsOn(appointments, date, timeZone));
   for (const appt of weekAppointments) {
-    const start = minutesSinceMidnight(new Date(appt.datetime));
+    const start = minutesSinceMidnight(new Date(appt.datetime), timeZone);
     rangeStart = Math.min(rangeStart, floorTo15(start));
     rangeEnd = Math.max(rangeEnd, ceilTo15(start + appt.duration_minutes));
   }
@@ -143,6 +145,7 @@ export function WeekView({
             services={services}
             date={addForm.date}
             initialTime={addForm.time}
+            timeZone={timeZone}
             onClientAdded={onClientAdded}
             onDone={() => {
               setAddForm(null);
@@ -204,7 +207,7 @@ export function WeekView({
             const isOpen = businessHour?.is_open ?? false;
             const dayOpenStart = isOpen && businessHour?.open_time ? timeToMinutes(businessHour.open_time) : null;
             const dayCloseEnd = isOpen && businessHour?.close_time ? timeToMinutes(businessHour.close_time) : null;
-            const dayAppointments = appointmentsOn(appointments, date);
+            const dayAppointments = appointmentsOn(appointments, date, timeZone);
             const isToday = date.toDateString() === today.toDateString();
 
             return (
@@ -250,8 +253,8 @@ export function WeekView({
                       );
                     })}
 
-                    {layoutOverlaps(dayAppointments).map(({ appointment: appt, column, totalColumns }, index) => {
-                      const start = minutesSinceMidnight(new Date(appt.datetime));
+                    {layoutOverlaps(dayAppointments, timeZone).map(({ appointment: appt, column, totalColumns }, index) => {
+                      const start = minutesSinceMidnight(new Date(appt.datetime), timeZone);
                       const top = minutesToPx(start, rangeStart);
                       const height = Math.max(appt.duration_minutes * (SLOT_HEIGHT_PX / SLOT_MINUTES), SLOT_HEIGHT_PX * 0.8);
                       const alternate = index % 2 === 1;
@@ -276,6 +279,7 @@ export function WeekView({
                         <button
                           key={appt.id}
                           onClick={() => onSelectAppointment(appt)}
+                          data-tour-id="appointment-block"
                           className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left leading-tight shadow-sm ${appointmentBlockClasses(appt.status, alternate)}`}
                           style={{
                             top: top + 1,

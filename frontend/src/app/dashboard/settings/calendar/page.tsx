@@ -5,11 +5,13 @@ import { BookingRulesSection } from "@/components/settings/BookingRulesSection";
 import { CalendarColorSection } from "@/components/settings/CalendarColorSection";
 import { OperatingHoursSection } from "@/components/settings/OperatingHoursSection";
 import { SettingsTabs } from "@/components/settings/SettingsTabs";
+import { TimeZoneSection } from "@/components/settings/TimeZoneSection";
 
 // The "Calendar" settings tab — everything that shapes how the dashboard
-// Calendar widget behaves and looks: which hours it's bookable (Operating
-// Hours), the booking rules layered on top (double booking, default
-// view), and now its own color (Calendar Color).
+// Calendar widget behaves and looks: which zone it runs on (Time Zone,
+// first — hours don't mean anything without it), which hours it's
+// bookable (Operating Hours), the booking rules layered on top (double
+// booking, default view), and its own color (Calendar Color).
 
 export default function CalendarSettingsPage() {
   return (
@@ -29,6 +31,7 @@ export default function CalendarSettingsPage() {
           <SettingsTabs />
         </Card>
         <div className="space-y-6">
+          <TimeZoneSection />
           <OperatingHoursSection />
           <BookingRulesSection />
           <CalendarColorSection />

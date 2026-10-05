@@ -98,7 +98,11 @@ export default function ServicesPage() {
         title="Services"
         description="What you offer and how much it costs. Feeds straight into invoices and booking."
         action={
-          <Button onClick={() => (showForm ? closeForm() : startAdding())} className="inline-flex items-center gap-1.5">
+          <Button
+            onClick={() => (showForm ? closeForm() : startAdding())}
+            className="inline-flex items-center gap-1.5"
+            data-tour-id="add-service-button"
+          >
             <Plus className="h-4 w-4" strokeWidth={2.5} />
             {showForm ? "Cancel" : "Add service"}
           </Button>

@@ -26,7 +26,20 @@ class ClientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Client
-        fields = ["id", "first_name", "last_name", "full_name", "email", "phone", "address", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "first_name",
+            "last_name",
+            "full_name",
+            "email",
+            "phone",
+            "address",
+            "city",
+            "state",
+            "zip_code",
+            "created_at",
+            "updated_at",
+        ]
         # These come back in every response, but the frontend can't set
         # them directly — "id" is assigned by the database, and the two
         # timestamps are managed automatically by the model (auto_now_add

@@ -54,6 +54,7 @@ export function TenderTypesSection() {
       icon={CreditCard}
       title="Tender Types"
       description="How payments are received. Add your own on top of the built-in defaults."
+      tourId="settings-tender-types"
     >
       {tenderTypes && (
         <ul className="divide-y divide-gray-100">

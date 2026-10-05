@@ -25,6 +25,9 @@ export function BusinessInfoSection() {
   const [businessName, setBusinessName] = useState(account?.business_name ?? "");
   const [phone, setPhone] = useState(account?.phone ?? "");
   const [address, setAddress] = useState(account?.address ?? "");
+  const [city, setCity] = useState(account?.city ?? "");
+  const [state, setState] = useState(account?.state ?? "");
+  const [zipCode, setZipCode] = useState(account?.zip_code ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -37,7 +40,7 @@ export function BusinessInfoSection() {
     try {
       await apiFetch("/api/accounts/me/", {
         method: "PATCH",
-        body: { business_name: businessName, phone, address },
+        body: { business_name: businessName, phone, address, city, state, zip_code: zipCode },
       });
       await refreshAccount(); // so the sidebar/header (which show account.business_name) update immediately too
       setSaved(true);
@@ -55,14 +58,27 @@ export function BusinessInfoSection() {
       description="Feeds into invoices, your landing page, and marketing e-blasts automatically. No need to enter it twice."
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field
-          label="Business name"
-          required
-          value={businessName}
-          onChange={(e) => setBusinessName(e.target.value)}
-        />
+        <div data-tour-id="business-name-field">
+          <Field
+            label="Business name"
+            required
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+          />
+        </div>
         <Field label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
         <Field label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <div className="flex flex-wrap gap-3">
+          <div className="min-w-[160px] flex-1">
+            <Field label="City" value={city} onChange={(e) => setCity(e.target.value)} />
+          </div>
+          <div className="w-24">
+            <Field label="State" value={state} onChange={(e) => setState(e.target.value)} />
+          </div>
+          <div className="w-28">
+            <Field label="Zip" value={zipCode} onChange={(e) => setZipCode(e.target.value)} />
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={submitting}>
             {submitting ? "Saving…" : "Save"}

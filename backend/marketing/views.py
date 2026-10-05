@@ -41,7 +41,7 @@ def _build_html_email(request, account, eblast):
     # same thing Django's {{ value|linebreaks }} template filter does.
     body_html = linebreaks(eblast.body)
 
-    address_line = f"<br>{escape(account.address)}" if account.address else ""
+    address_line = "".join(f"<br>{escape(line)}" for line in account.formatted_address_lines())
 
     return f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">

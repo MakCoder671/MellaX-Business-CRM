@@ -73,7 +73,13 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
 
     # --- Business Information (shows up in Settings, feeds invoices/landing page) ---
     phone = models.CharField(max_length=32, blank=True)
+    # Split into street/city/state/zip (matching first_name/last_name's own
+    # split) instead of one free-text box — see formatted_address_lines()
+    # below for how these get joined back into display lines.
     address = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=255, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    zip_code = models.CharField(max_length=20, blank=True)
 
     # --- Branding (Settings section) ---
     # Shows up on invoices, the public landing page, marketing e-blasts,
@@ -203,3 +209,19 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
         # Whatever this returns is what shows up in the Django admin's list view,
         # and anywhere Python tries to print a BusinessAccount object.
         return self.business_name
+
+    def formatted_address_lines(self):
+        # Used anywhere an address gets rendered as plain text (the
+        # emailed invoice and marketing e-blast footers — see
+        # invoicing/views.py and marketing/views.py) instead of each of
+        # those hand-rolling the same "join whatever parts exist" logic.
+        # The frontend has its own equivalent (lib/address.ts) for the
+        # React-rendered spots, since this needs to stay plain Python.
+        lines = []
+        if self.address:
+            lines.append(self.address)
+        city_state_zip = ", ".join(filter(None, [self.city, self.state])) + (f" {self.zip_code}" if self.zip_code else "")
+        city_state_zip = city_state_zip.strip(", ").strip()
+        if city_state_zip:
+            lines.append(city_state_zip)
+        return lines

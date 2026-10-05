@@ -6,6 +6,7 @@ import { Receipt, X } from "lucide-react";
 import { apiFetch, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText } from "@/components/form";
+import { useTour } from "@/components/onboarding/TourContext";
 
 import { InvoiceView } from "./InvoiceView";
 
@@ -98,6 +99,7 @@ export function CreateInvoiceModal({
   onClose: () => void;
 }) {
   const { account } = useAuth();
+  const { active, currentStep, nextStep } = useTour();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | "">(clientId ?? "");
   const [services, setServices] = useState<Service[]>([]);
@@ -236,6 +238,11 @@ export function CreateInvoiceModal({
 
       onSaved?.(invoice.id);
       setCreatedInvoiceId(invoice.id);
+      // The "Create an invoice" tour's invoice-options step is autoAdvance
+      // (see TourContext.tsx) — saving is what swaps this whole form for
+      // InvoiceView, so this is where the tour moves to its next step,
+      // which points at InvoiceView's own action rail.
+      if (active?.tourId === "invoice" && currentStep?.targetId === "invoice-options") nextStep();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong.");
     } finally {
@@ -259,7 +266,7 @@ export function CreateInvoiceModal({
         {/* Header - a small brand-tinted icon badge instead of a bare
             heading, matching the invoice document's own letterhead feel. */}
         <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-tour-id="invoice-header">
             <div className="accent-bg flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
               <Receipt className="h-5 w-5" strokeWidth={2} />
             </div>
@@ -302,7 +309,7 @@ export function CreateInvoiceModal({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="space-y-2">
+        <div className="space-y-2" data-tour-id="invoice-line-items">
           <p className="text-sm font-medium text-gray-700">Line items</p>
           {lineItems.map((item, i) => {
             const service = services.find((s) => s.id === item.service);
@@ -420,7 +427,7 @@ export function CreateInvoiceModal({
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-4">
-          <label className="block text-sm">
+          <label className="block text-sm" data-tour-id="invoice-discount">
             Discount (applies to the whole invoice)
             <select
               value={invoiceDiscount}
@@ -435,7 +442,7 @@ export function CreateInvoiceModal({
               ))}
             </select>
           </label>
-          <label className="block text-sm">
+          <label className="block text-sm" data-tour-id="invoice-notes">
             Notes
             <input
               value={notes}
@@ -479,7 +486,7 @@ export function CreateInvoiceModal({
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl border border-gray-100 p-4">
+        <div className="mt-6 rounded-xl border border-gray-100 p-4" data-tour-id="invoice-record-payment">
           <p className="text-sm font-medium text-gray-700">Record a payment (optional)</p>
           <p className="mt-1 text-xs text-gray-500">
             Leave this blank to save the invoice with an open balance and collect payment later. Split across more
@@ -543,7 +550,10 @@ export function CreateInvoiceModal({
 
         {/* Footer — pinned outside the scrollable body so the primary
             action is always reachable, even on a long invoice. */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4">
+        <div
+          className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4"
+          data-tour-id="invoice-options"
+        >
           <ErrorText>{error}</ErrorText>
           <Button type="button" variant="secondary" onClick={() => handleSave("quote")} disabled={saving !== null}>
             {saving === "quote" ? "Saving…" : "Quote"}

@@ -1,3 +1,5 @@
+import { formatInTimeZone, utcToZonedParts } from "@/lib/timezone";
+
 import { minutesSinceMidnight } from "./gridHelpers";
 import type { Appointment, BusinessHour, Client, Service } from "./types";
 
@@ -15,8 +17,31 @@ export function toJsDayOfWeek(backendDayOfWeek: number) {
   return (backendDayOfWeek + 1) % 7;
 }
 
-export function sameDay(a: Date, b: Date) {
-  return a.toDateString() === b.toDateString();
+// `appointmentDate` is a real UTC instant (an appointment's datetime);
+// `viewedDate` is one of the calendar's own navigation-state markers (DayView's
+// `date`, MonthView's `selectedDate`, ...) — those are never sent to or
+// received from the backend, they're just "which calendar day is on
+// screen" counters built with plain Date arithmetic, so they're zone-
+// agnostic by construction and read back with their own plain getters.
+// Only the appointment side needs converting to the business's zone
+// before the two get compared.
+export function sameDay(appointmentDate: Date, viewedDate: Date, timeZone: string) {
+  const zoned = utcToZonedParts(appointmentDate, timeZone);
+  return (
+    zoned.year === viewedDate.getFullYear() &&
+    zoned.month === viewedDate.getMonth() + 1 &&
+    zoned.day === viewedDate.getDate()
+  );
+}
+
+// For comparing two navigation markers directly against each other
+// (MonthView's grid cells against "today" or the selected day) — both
+// sides are already zone-agnostic marker Dates, so no conversion belongs
+// here at all. A separate function from sameDay above specifically so the
+// two can never get mixed up: this one must never be handed an actual
+// appointment datetime.
+export function sameCalendarDay(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
 export function startOfWeek(date: Date) {
@@ -26,8 +51,10 @@ export function startOfWeek(date: Date) {
   return result;
 }
 
-export function formatTime(date: Date) {
-  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+// `date` is a real UTC instant — formatted as a wall-clock time in the
+// business's own zone, not whatever zone the viewing device happens to be in.
+export function formatTime(date: Date, timeZone: string) {
+  return formatInTimeZone(date, timeZone, "h:mm a");
 }
 
 // Formats a business-hours time string ("14:00:00", straight from the
@@ -82,7 +109,7 @@ export function businessHoursFor(hours: BusinessHour[], date: Date) {
   return hours.find((h) => toJsDayOfWeek(h.day_of_week) === date.getDay()) ?? null;
 }
 
-export function appointmentsOn(appointments: Appointment[], date: Date) {
+export function appointmentsOn(appointments: Appointment[], date: Date, timeZone: string) {
   // Cancelled appointments come out of the calendar entirely — per
   // Mako, they still live on the client's profile (the Appointments tab
   // shows every appointment, cancelled included, via its own separate
@@ -91,7 +118,7 @@ export function appointmentsOn(appointments: Appointment[], date: Date) {
   // appointmentBlockClasses/appointmentChipClasses below for how it's
   // marked instead of hidden.
   return appointments
-    .filter((a) => a.status !== "cancelled" && sameDay(new Date(a.datetime), date))
+    .filter((a) => a.status !== "cancelled" && sameDay(new Date(a.datetime), date, timeZone))
     .sort((a, b) => a.datetime.localeCompare(b.datetime));
 }
 
@@ -201,9 +228,10 @@ export function appointmentChipClasses(status: Appointment["status"], alternate 
 // from before this existed).
 export type AppointmentLayout = { appointment: Appointment; column: number; totalColumns: number };
 
-export function layoutOverlaps(appointments: Appointment[]): AppointmentLayout[] {
+export function layoutOverlaps(appointments: Appointment[], timeZone: string): AppointmentLayout[] {
   const sorted = [...appointments].sort(
-    (a, b) => minutesSinceMidnight(new Date(a.datetime)) - minutesSinceMidnight(new Date(b.datetime))
+    (a, b) =>
+      minutesSinceMidnight(new Date(a.datetime), timeZone) - minutesSinceMidnight(new Date(b.datetime), timeZone)
   );
 
   type Placed = { appointment: Appointment; column: number; end: number };
@@ -219,7 +247,7 @@ export function layoutOverlaps(appointments: Appointment[]): AppointmentLayout[]
   }
 
   for (const appointment of sorted) {
-    const start = minutesSinceMidnight(new Date(appointment.datetime));
+    const start = minutesSinceMidnight(new Date(appointment.datetime), timeZone);
     const end = start + appointment.duration_minutes;
 
     active = active.filter((p) => p.end > start);

@@ -88,6 +88,7 @@ export function OperatingHoursSection() {
       icon={Clock}
       title="Operating Hours"
       description={<>Days/times outside these show as &quot;Off&quot; on your Calendar.</>}
+      tourId="settings-operating-hours"
     >
       {!hours ? (
         <p className="text-sm text-gray-500">Loading…</p>

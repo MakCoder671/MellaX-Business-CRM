@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
+import { formatAddressLines } from "@/lib/address";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/form";
 
@@ -111,7 +112,11 @@ export default function PrintInvoicePage({ params }: PageProps<"/dashboard/invoi
               <img src={account.logo} alt="" className="mb-3 h-14 w-14 rounded object-cover" />
             )}
             <p className="text-lg font-semibold text-gray-900">{account.business_name}</p>
-            {account.address && <p className="text-sm text-gray-500">{account.address}</p>}
+            {formatAddressLines(account).map((line) => (
+              <p key={line} className="text-sm text-gray-500">
+                {line}
+              </p>
+            ))}
             {account.phone && <p className="text-sm text-gray-500">{account.phone}</p>}
           </div>
           <div className="text-right">

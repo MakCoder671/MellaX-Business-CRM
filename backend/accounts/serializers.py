@@ -117,6 +117,9 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
             # Business Information
             "phone",
             "address",
+            "city",
+            "state",
+            "zip_code",
             # Branding
             "logo",
             # Theme

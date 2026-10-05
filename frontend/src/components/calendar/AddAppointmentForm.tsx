@@ -4,8 +4,10 @@ import { useState } from "react";
 import { CalendarPlus, Clock, Repeat, StickyNote, Tag, Timer, User, UserPlus, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { zonedTimeToUtc } from "@/lib/timezone";
 import { Button, ErrorText, Field } from "@/components/form";
 
+import { minutesToLabel } from "./gridHelpers";
 import { DURATION_OPTIONS, formatDuration } from "./helpers";
 import type { Client, Service } from "./types";
 
@@ -69,6 +71,7 @@ export function AddAppointmentForm({
   services,
   date,
   initialTime = "09:00",
+  timeZone,
   onClientAdded,
   onDone,
 }: {
@@ -77,6 +80,7 @@ export function AddAppointmentForm({
   services: Service[];
   date: Date;
   initialTime?: string; // "HH:MM" — lets DayView's time grid pre-fill the slot someone clicked
+  timeZone: string; // the business's own zone (account.time_zone) — `date` + `time` are wall-clock values meant in THIS zone, not the browser's
   onClientAdded: () => void;
   onDone: () => void;
 }) {
@@ -125,14 +129,18 @@ export function AddAppointmentForm({
       }
 
       const [hours, minutes] = time.split(":").map(Number);
-      const localDatetime = new Date(date);
-      localDatetime.setHours(hours, minutes, 0, 0);
+      // `date` is just a calendar-day marker (year/month/day), and `time`
+      // is what was typed into the Time field — together they're a
+      // wall-clock moment meant in the BUSINESS's zone, not the browser's,
+      // so this goes through zonedTimeToUtc rather than a plain
+      // new Date(...).setHours(...).
+      const zonedDatetime = zonedTimeToUtc(date.getFullYear(), date.getMonth() + 1, date.getDate(), hours, minutes, timeZone);
 
       const basePayload = {
         calendar: calendarId,
         client: resolvedClientId,
         service: serviceId || null,
-        datetime: localDatetime.toISOString(),
+        datetime: zonedDatetime.toISOString(),
         duration_minutes: duration,
         notes,
         status: "scheduled",
@@ -174,9 +182,10 @@ export function AddAppointmentForm({
   const timeLabel = (() => {
     const [h, m] = time.split(":").map(Number);
     if (Number.isNaN(h) || Number.isNaN(m)) return null;
-    const d = new Date(date);
-    d.setHours(h, m, 0, 0);
-    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    // Just echoing back what was typed into the Time field in a nicer
+    // format — no Date/timezone conversion needed, it's not derived from
+    // anything stored, so minutesToLabel's plain arithmetic is enough.
+    return minutesToLabel(h * 60 + m);
   })();
 
   return (

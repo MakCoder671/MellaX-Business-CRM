@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { formatAddressLines } from "@/lib/address";
 
 // ----------------------------------------------------------------------------
 // This is the ONLY page in the whole frontend that a random stranger
@@ -21,6 +22,9 @@ type PublicLandingPage = {
   phone: string;
   email: string;
   address: string;
+  city: string;
+  state: string;
+  zip_code: string;
   logo: string | null;
   photos: { id: number; image: string; display_order: number }[];
   services: { name: string; description: string; price: string }[];
@@ -99,7 +103,9 @@ export default function PublicLandingPage({ params }: PageProps<"/l/[slug]">) {
       <section className="mt-8 text-sm text-gray-600">
         {page.phone && <p>{page.phone}</p>}
         {page.email && <p>{page.email}</p>}
-        {page.address && <p>{page.address}</p>}
+        {formatAddressLines(page).map((line) => (
+          <p key={line}>{line}</p>
+        ))}
       </section>
     </main>
   );

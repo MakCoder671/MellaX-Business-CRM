@@ -11,9 +11,10 @@ import {
   appointmentsOn,
   clientName,
   formatDuration,
+  formatTime,
   isClosedDay,
   isNoShow,
-  sameDay,
+  sameCalendarDay,
   serviceName,
 } from "./helpers";
 import type { Appointment, BusinessHour, Client, Service } from "./types";
@@ -50,6 +51,7 @@ export function MonthView({
   appointments,
   clients,
   services,
+  timeZone,
   onChanged,
   onClientAdded,
   onSelectAppointment,
@@ -59,6 +61,7 @@ export function MonthView({
   appointments: Appointment[];
   clients: Client[];
   services: Service[];
+  timeZone: string;
   onChanged: () => void;
   onClientAdded: () => void;
   onSelectAppointment: (appointment: Appointment) => void;
@@ -69,7 +72,7 @@ export function MonthView({
 
   const gridDays = getMonthGridDays(viewMonth);
   const today = new Date();
-  const selectedDayAppointments = appointmentsOn(appointments, selectedDate);
+  const selectedDayAppointments = appointmentsOn(appointments, selectedDate, timeZone);
 
   return (
     <div>
@@ -118,9 +121,9 @@ export function MonthView({
 
         {gridDays.map((date) => {
           const inCurrentMonth = date.getMonth() === viewMonth.getMonth();
-          const isToday = sameDay(date, today);
-          const isSelected = sameDay(date, selectedDate);
-          const dayAppointments = appointmentsOn(appointments, date);
+          const isToday = sameCalendarDay(date, today);
+          const isSelected = sameCalendarDay(date, selectedDate);
+          const dayAppointments = appointmentsOn(appointments, date, timeZone);
           const closed = isClosedDay(hours, date);
 
           return (
@@ -158,11 +161,12 @@ export function MonthView({
                         e.stopPropagation();
                         onSelectAppointment(appt);
                       }}
+                      data-tour-id="appointment-block"
                       className={`flex items-center gap-1 truncate rounded px-1 text-[10px] font-medium ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
                     >
                       {isNoShow(appt.status) && <AlertTriangle className="h-2.5 w-2.5 shrink-0" strokeWidth={2.5} />}
                       <span className="shrink-0 font-normal opacity-80">
-                        {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                        {formatTime(new Date(appt.datetime), timeZone)}
                       </span>
                       <span className="truncate">{clientName(clients, appt.client)}</span>
                       {service && <span className="truncate font-normal opacity-80">· {service}</span>}
@@ -190,7 +194,7 @@ export function MonthView({
           {/* Per Operating Hours (Settings): a closed day blocks booking
               through the calendar entirely — same rule as Day and Week. */}
           {!isClosedDay(hours, selectedDate) && (
-            <Button onClick={() => setShowAddForm((v) => !v)}>
+            <Button onClick={() => setShowAddForm((v) => !v)} data-tour-id="add-appointment-button">
               {showAddForm ? "Cancel" : "Add appointment"}
             </Button>
           )}
@@ -214,6 +218,7 @@ export function MonthView({
                       one run-on line. */}
                   <button
                     onClick={() => onSelectAppointment(appt)}
+                    data-tour-id="appointment-block"
                     className={`flex w-full flex-col gap-1 rounded-lg px-3 py-2.5 text-left ${appointmentChipClasses(appt.status, index % 2 === 1)}`}
                   >
                     <span className="flex items-center gap-1.5 text-sm font-bold sm:text-base">
@@ -229,8 +234,7 @@ export function MonthView({
                     )}
                     <span className="flex items-center gap-1.5 text-xs opacity-80">
                       <Clock className="h-3 w-3 shrink-0" strokeWidth={2} />
-                      {new Date(appt.datetime).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} ·{" "}
-                      {formatDuration(appt.duration_minutes)}
+                      {formatTime(new Date(appt.datetime), timeZone)} · {formatDuration(appt.duration_minutes)}
                     </span>
                   </button>
                 </li>
@@ -246,6 +250,7 @@ export function MonthView({
               clients={clients}
               services={services}
               date={selectedDate}
+              timeZone={timeZone}
               onClientAdded={onClientAdded}
               onDone={() => {
                 setShowAddForm(false);

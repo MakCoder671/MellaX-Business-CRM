@@ -70,7 +70,7 @@ def _build_invoice_html_email(request, account, invoice, client):
     discount_row = (
         f'<p style="margin:2px 0;">Discount: -${invoice.discount_amount():.2f}</p>' if invoice.discount_id else ""
     )
-    address_line = f"<br>{escape(account.address)}" if account.address else ""
+    address_line = "".join(f"<br>{escape(line)}" for line in account.formatted_address_lines())
 
     return f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 560px; margin: 0 auto; color: #1f2937;">

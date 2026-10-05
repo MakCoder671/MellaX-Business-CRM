@@ -26,6 +26,9 @@ export type Account = {
   // Business Information
   phone: string;
   address: string;
+  city: string;
+  state: string;
+  zip_code: string;
   // Branding — `logo` is a full URL once uploaded (e.g.
   // "http://127.0.0.1:8001/media/logos/xyz.png"), or null until then.
   logo: string | null;

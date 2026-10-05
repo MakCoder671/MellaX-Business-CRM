@@ -55,6 +55,7 @@ export function InvoiceSettingsSection() {
       icon={Receipt}
       title="Invoice Settings"
       description="Tax rates default to 0% and auto-calculate onto every new invoice."
+      tourId="settings-invoice-settings"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">

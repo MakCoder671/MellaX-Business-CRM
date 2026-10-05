@@ -157,7 +157,11 @@ export default function ProductsPage() {
         title="Products"
         description="Physical items you sell. Track stock and get warned before you run out."
         action={
-          <Button onClick={() => (showForm ? closeForm() : startAdding())} className="inline-flex items-center gap-1.5">
+          <Button
+            onClick={() => (showForm ? closeForm() : startAdding())}
+            className="inline-flex items-center gap-1.5"
+            data-tour-id="add-product-button"
+          >
             <Plus className="h-4 w-4" strokeWidth={2.5} />
             {showForm ? "Cancel" : "Add product"}
           </Button>

@@ -1,3 +1,5 @@
+import { utcToZonedParts } from "@/lib/timezone";
+
 // ----------------------------------------------------------------------------
 // The time-axis math shared by DayView and WeekView — both draw the same
 // kind of vertical timeline (15-minute slots, a line every 30 minutes),
@@ -14,8 +16,12 @@ export function timeToMinutes(hhmmss: string) {
   return h * 60 + m;
 }
 
-export function minutesSinceMidnight(date: Date) {
-  return date.getHours() * 60 + date.getMinutes();
+// `date` is a UTC instant (an appointment's datetime); timeZone is the
+// business's own (account.time_zone) — this is what the business's wall
+// clock would actually read, not the viewing device's.
+export function minutesSinceMidnight(date: Date, timeZone: string) {
+  const { hour, minute } = utcToZonedParts(date, timeZone);
+  return hour * 60 + minute;
 }
 
 export function minutesToLabel(minutes: number) {

@@ -30,3 +30,6 @@ class LandingPagePhoto(models.Model):
     landing_page = models.ForeignKey(LandingPage, on_delete=models.CASCADE, related_name="photos")
     image = models.ImageField(upload_to="landing_pages/")  # actual image files get saved under media/landing_pages/
     display_order = models.PositiveIntegerField(default=0)  # controls the order photos appear in the gallery
+
+    class Meta:
+        ordering = ["display_order", "id"]  # without this, the gallery order isn't guaranteed at all

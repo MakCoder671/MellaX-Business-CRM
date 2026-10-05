@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Card } from "@/components/form";
 import { useAuth } from "@/lib/auth-context";
+import { useTour } from "@/components/onboarding/TourContext";
 
 import { AppointmentOverview } from "./AppointmentOverview";
 import { DayView } from "./DayView";
@@ -40,9 +41,23 @@ const VIEW_LABELS: Record<ViewMode, string> = {
 
 export function Calendar() {
   const { account } = useAuth();
+  const { active, currentStep, nextStep } = useTour();
+  const timeZone = account?.time_zone ?? "UTC";
   const [view, setView] = useState<ViewMode>(() => account?.default_calendar_view ?? "month");
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const { calendarId, hours, appointments, clients, services, loading, refresh, refreshClients } = useCalendarData();
+
+  // The "Create an invoice" tour's first step points at an appointment on
+  // the calendar and relies on the real click to advance (see its
+  // autoAdvance flag in TourContext.tsx) — the tooltip has no Next button
+  // of its own for that step, since clicking the appointment IS the
+  // action. Every view's onSelectAppointment funnels through here, so
+  // this one spot can advance the tour regardless of which view (Day/
+  // Week/Month) the click actually happened in.
+  function handleSelectAppointment(appointment: Appointment) {
+    setSelectedAppointment(appointment);
+    if (active?.tourId === "invoice" && currentStep?.autoAdvance) nextStep();
+  }
 
   return (
     <Card className="p-6">
@@ -83,9 +98,10 @@ export function Calendar() {
                 appointments={appointments}
                 clients={clients}
                 services={services}
+                timeZone={timeZone}
                 onChanged={refresh}
                 onClientAdded={refreshClients}
-                onSelectAppointment={setSelectedAppointment}
+                onSelectAppointment={handleSelectAppointment}
               />
             )}
             {view === "week" && (
@@ -95,9 +111,10 @@ export function Calendar() {
                 appointments={appointments}
                 clients={clients}
                 services={services}
+                timeZone={timeZone}
                 onChanged={refresh}
                 onClientAdded={refreshClients}
-                onSelectAppointment={setSelectedAppointment}
+                onSelectAppointment={handleSelectAppointment}
               />
             )}
             {view === "month" && (
@@ -107,9 +124,10 @@ export function Calendar() {
                 appointments={appointments}
                 clients={clients}
                 services={services}
+                timeZone={timeZone}
                 onChanged={refresh}
                 onClientAdded={refreshClients}
-                onSelectAppointment={setSelectedAppointment}
+                onSelectAppointment={handleSelectAppointment}
               />
             )}
           </>
@@ -121,6 +139,7 @@ export function Calendar() {
           appointment={selectedAppointment}
           clients={clients}
           services={services}
+          timeZone={timeZone}
           onClose={() => setSelectedAppointment(null)}
           onChanged={refresh}
         />
