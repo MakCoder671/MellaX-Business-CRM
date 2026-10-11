@@ -1,17 +1,22 @@
 from decimal import Decimal, InvalidOperation
 
 from django.core.mail import EmailMultiAlternatives
+
+from common.email_images import attach_inline_image
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.html import escape
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import permissions
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from common.views import TenantScopedModelViewSet
 from services.models import Service
 
+from .card_views import reconcile_pending_card_payment
 from .models import VOID_AGE, Discount, Invoice, InvoiceLineItem, PaymentRecord, TenderType
 from .serializers import (
     DiscountSerializer,
@@ -31,12 +36,14 @@ def _recompute_tax(invoice):
     total = Decimal("0")
     for item in invoice.line_items.filter(is_voided=False):
         if item.service.is_taxable:
-            total += item.net_amount() * (invoice.business_account.service_tax_percent / Decimal("100"))
+            # Products use the product tax rate, services use the service rate.
+            rate = invoice.business_account.product_tax_percent if item.service.is_product else invoice.business_account.service_tax_percent
+            total += item.net_amount() * (rate / Decimal("100"))
     invoice.tax_amount = total.quantize(Decimal("0.01"))
     invoice.save(update_fields=["tax_amount"])
 
 
-def _build_invoice_html_email(request, account, invoice, client):
+def _build_invoice_html_email(account, invoice, client, logo_src=None):
     """
     A plain, letterhead-style HTML version of the invoice to send by
     email — same information as the print page, condensed into an inline-
@@ -45,10 +52,9 @@ def _build_invoice_html_email(request, account, invoice, client):
     marketing/views.py's e-blast email builder.
     """
     logo_html = ""
-    if account.logo:
-        logo_url = request.build_absolute_uri(account.logo.url)
+    if logo_src:
         logo_html = (
-            f'<img src="{escape(logo_url)}" alt="{escape(account.business_name)}" '
+            f'<img src="{escape(logo_src)}" alt="{escape(account.business_name)}" '
             f'style="height:48px;width:auto;margin-bottom:16px;">'
         )
 
@@ -153,6 +159,14 @@ class InvoiceViewSet(TenantScopedModelViewSet):
             queryset = queryset.filter(issued_date__lte=end)
         return queryset.order_by("-issued_date")
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Quietly checks Stripe for a card payment this invoice is still waiting on - catches
+        # it even if the browser never told us. See card_views.reconcile_pending_card_payment.
+        reconcile_pending_card_payment(instance)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         # Normally TenantScopedModelViewSet.perform_create() stamps
         # `business_account=request.user` onto every new row automatically
@@ -170,6 +184,17 @@ class InvoiceViewSet(TenantScopedModelViewSet):
         # the row itself always sticks around from that point on.
         if instance.is_locked():
             raise PermissionDenied("This invoice has been voided and can't be deleted.")
+        if instance.payment_records.filter(processor="stripe", is_refund=False).exists():
+            raise PermissionDenied("This invoice has a card payment. Refund it through Stripe first, then delete the invoice.")
+        if instance.pending_payment_intent:
+            # Stop any card charge that hasn't gone through, so the customer can't be charged for a deleted invoice.
+            from .stripe_payments import cancel_intent, stripe_keys
+            from rest_framework.exceptions import ValidationError as _Invalid
+
+            try:
+                cancel_intent(stripe_keys(instance.business_account), instance.pending_payment_intent)
+            except _Invalid:
+                pass
         instance.delete()
 
     @action(detail=True, methods=["post"], url_path="line-items")
@@ -299,7 +324,6 @@ class InvoiceViewSet(TenantScopedModelViewSet):
         if not client.email:
             return Response({"detail": "This client doesn't have an email on file."}, status=400)
 
-        html_body = _build_invoice_html_email(request, request.user, invoice, client)
         plain_body = f"Your invoice {invoice.invoice_number} for ${invoice.total_due():.2f} from {request.user.business_name}."
 
         message = EmailMultiAlternatives(
@@ -308,7 +332,9 @@ class InvoiceViewSet(TenantScopedModelViewSet):
             from_email=None,  # None = use Django's DEFAULT_FROM_EMAIL setting
             to=[client.email],
         )
-        message.attach_alternative(html_body, "text/html")
+        # The logo goes in as an attachment, so the email shows it without a public web address.
+        logo_src = attach_inline_image(message, request.user.logo, "mellax-logo") if request.user.logo else None
+        message.attach_alternative(_build_invoice_html_email(request.user, invoice, client, logo_src), "text/html")
         message.send()
 
         return Response({"detail": "Invoice emailed."})
@@ -323,6 +349,8 @@ class PaymentRecordViewSet(TenantScopedModelViewSet):
         # a payment is part of the locked record at that point too.
         if instance.invoice.is_locked():
             raise PermissionDenied("This invoice has been voided and its payments can't be changed.")
+        if instance.processor == "stripe" and not instance.is_refund:
+            raise PermissionDenied("A card payment is refunded through Stripe, so it can't be deleted here.")
         instance.delete()
 
 
@@ -364,3 +392,66 @@ class TenderTypeViewSet(TenantScopedModelViewSet):
 class DiscountViewSet(TenantScopedModelViewSet):
     queryset = Discount.objects.all()
     serializer_class = DiscountSerializer
+
+
+class InvoicePreviewView(APIView):
+    """
+    POST /api/invoicing/invoices/preview/ — the totals an invoice WOULD have, using the same
+    calculation as saving it. The create screen shows these, so what the owner sees before
+    a payment is exactly what gets saved. Nothing is written to the database.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        from decimal import Decimal, InvalidOperation
+
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
+        from services.models import Service
+
+        from .totals import compute_totals
+
+        account = request.user
+        lines = []
+        for raw in request.data.get("line_items") or []:
+            service = Service.objects.for_account(account).filter(pk=raw.get("service")).first()
+            if service is None:
+                raise DRFValidationError({"detail": "One of the services isn't on your account."})
+            try:
+                quantity = Decimal(str(raw.get("quantity", "1")))
+            except InvalidOperation as exc:
+                raise DRFValidationError({"detail": "Quantity needs to be a number."}) from exc
+            if quantity <= 0:
+                raise DRFValidationError({"detail": "Quantity needs to be more than zero."})
+            discount_type = raw.get("discount_type") or "flat"
+            discount_value = raw.get("discount_value")
+            if discount_value not in (None, ""):
+                discount_value = Decimal(str(discount_value))
+                if discount_value < 0 or (discount_type == "percent" and discount_value > 100):
+                    raise DRFValidationError({"detail": "That line discount isn't valid."})
+            else:
+                discount_value = None
+            lines.append({
+                "service": service,
+                "quantity": quantity,
+                "unit_price": service.price,
+                "discount_type": discount_type,
+                "discount_value": discount_value,
+            })
+
+        discount = None
+        discount_id = request.data.get("discount")
+        if discount_id:
+            discount = Discount.objects.for_account(account).filter(pk=discount_id).first()
+            if discount is None:
+                raise DRFValidationError({"detail": "That discount isn't on your account."})
+
+        totals = compute_totals(account, lines, discount)
+        return Response({
+            "subtotal": f"{totals['subtotal']:.2f}",
+            "tax": f"{totals['tax']:.2f}",
+            "discount": f"{totals['discount']:.2f}",
+            "total": f"{totals['total']:.2f}",
+            "line_totals": [f"{n:.2f}" for n in totals["line_nets"]],
+        })

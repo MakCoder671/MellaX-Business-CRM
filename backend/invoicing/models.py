@@ -102,6 +102,8 @@ class Invoice(TenantScopedModel):
     tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # calculated automatically, see serializers.py
     notes = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_UNPAID)
+    # The Stripe payment started for this invoice, not yet confirmed. Cancelled if the invoice is deleted first.
+    pending_payment_intent = models.CharField(max_length=100, blank=True)
     invoice_number = models.CharField(max_length=32)  # e.g. "INV-1001", auto-generated — see serializers.py
     issued_date = models.DateField(auto_now_add=True)
 
@@ -306,4 +308,10 @@ class PaymentRecord(TenantScopedModel):
     tender_type = models.ForeignKey(TenderType, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date_received = models.DateField(auto_now_add=True)
+    # Where a card payment came from. Empty for payments recorded by hand.
+    processor = models.CharField(max_length=20, blank=True)  # "stripe" for card payments taken through Stripe
+    processor_intent = models.CharField(max_length=100, blank=True)  # the Stripe payment this belongs to (refunds point back to it)
+    processor_reference = models.CharField(max_length=100, blank=True)  # for refunds, Stripe's refund id
+    card_brand = models.CharField(max_length=20, blank=True)  # e.g. "visa"
+    card_last4 = models.CharField(max_length=4, blank=True)
     is_refund = models.BooleanField(default=False)  # True = money going back OUT to the client, not coming in

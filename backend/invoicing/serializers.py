@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.db import models, transaction
+from django.db.models import Sum
 from rest_framework import serializers
 
 from clients.models import Client
@@ -70,8 +71,13 @@ class PaymentRecordSerializer(serializers.ModelSerializer):
             "amount",
             "date_received",
             "is_refund",
+            # Card details come back so the screen can show "Visa ending in 4242".
+            "processor",
+            "processor_intent",
+            "card_brand",
+            "card_last4",
         ]
-        read_only_fields = ["id", "date_received"]
+        read_only_fields = ["id", "date_received", "processor", "processor_intent", "card_brand", "card_last4"]
 
     def validate(self, attrs):
         # Belt-and-suspenders check: even though the frontend should only
@@ -104,6 +110,24 @@ class PaymentRecordSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "This is a quote, not a real invoice yet. No payment can be recorded against it."
                 )
+
+            # A payment can't be more than what's left to pay. Overpaying was silently saved before,
+            # which showed up as a negative "balance due." Refunds are checked separately.
+            is_refund = attrs.get("is_refund", getattr(self.instance, "is_refund", False))
+            amount = attrs.get("amount", getattr(self.instance, "amount", None))
+            if not is_refund and amount is not None:
+                others = PaymentRecord.objects.filter(invoice=owned_invoice)
+                if self.instance is not None:
+                    others = others.exclude(pk=self.instance.pk)
+                received = others.filter(is_refund=False).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+                refunded = others.filter(is_refund=True).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+                remaining = owned_invoice.total_due() - (received - refunded)
+                if remaining <= 0:
+                    raise serializers.ValidationError({"amount": "This invoice is already paid in full. Nothing is left to record."})
+                if amount > remaining:
+                    raise serializers.ValidationError(
+                        {"amount": f"That's more than the balance due. ${remaining:.2f} is left on this invoice."}
+                    )
 
         # Tender types are a bit different — a tender type either belongs
         # to nobody (a system default like "Cash") or belongs to exactly
@@ -304,11 +328,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         # that line's own discount, if it has one, so a discounted
         # service isn't taxed as if it sold at full price. The tax
         # percentage itself comes from the account's own Invoice Settings
-        # (service_tax_percent), which the business configures once.
+        # (service or product rate, depending on the line), set once by the business.
         total = Decimal("0")
         for item in line_items:
             if item["service"].is_taxable:
-                total += self._line_net(item) * (account.service_tax_percent / Decimal("100"))
+                # Products use the product tax rate, services use the service rate.
+                rate = account.product_tax_percent if item["service"].is_product else account.service_tax_percent
+                total += self._line_net(item) * (rate / Decimal("100"))
         # Rounded to the cent — see the note on Invoice.total_due() for
         # why an un-rounded fractional-cent total is a real bug, not just
         # a cosmetic one.

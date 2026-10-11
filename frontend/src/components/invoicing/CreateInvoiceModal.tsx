@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Receipt, X } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText } from "@/components/form";
 import { useTour } from "@/components/onboarding/TourContext";
 
@@ -53,6 +52,9 @@ type LineItemDraft = {
 
 type PaymentDraft = { tenderTypeId: number; amount: string };
 
+// What the server works out for a set of line items. Money comes back as text, to the cent.
+type InvoiceQuote = { subtotal: string; tax: string; discount: string; total: string; line_totals: string[] };
+
 function lineDiscountAmount(item: LineItemDraft, services: Service[]) {
   const service = services.find((s) => s.id === item.service);
   const value = Number(item.discountValue || 0);
@@ -61,16 +63,11 @@ function lineDiscountAmount(item: LineItemDraft, services: Service[]) {
   return item.discountType === "flat" ? Math.min(value, gross) : gross * (value / 100);
 }
 
-function lineNet(item: LineItemDraft, services: Service[]) {
-  const service = services.find((s) => s.id === item.service);
-  if (!service) return 0;
-  const gross = Number(item.quantity || 0) * Number(service.price);
-  return gross - lineDiscountAmount(item, services);
-}
-
-// Renders a negative balance as "-$20.00" instead of the awkward "$-20.00".
+// Renders a negative amount as "-$20.00" instead of the awkward "$-20.00", and never shows "-$0.00".
 function money(amount: number) {
-  return amount < 0 ? `-$${Math.abs(amount).toFixed(2)}` : `$${amount.toFixed(2)}`;
+  const rounded = Math.round(amount * 100) / 100;
+  if (Math.abs(rounded) < 0.005) return "$0.00";
+  return rounded < 0 ? `-$${Math.abs(rounded).toFixed(2)}` : `$${rounded.toFixed(2)}`;
 }
 
 export function CreateInvoiceModal({
@@ -98,7 +95,6 @@ export function CreateInvoiceModal({
   // afterward. Callers use it to refresh their own data and hide the popup.
   onClose: () => void;
 }) {
-  const { account } = useAuth();
   const { active, currentStep, nextStep } = useTour();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<number | "">(clientId ?? "");
@@ -157,29 +153,49 @@ export function CreateInvoiceModal({
     setPayments((p) => p.filter((_, i) => i !== index));
   }
 
-  // Live preview of the total — mirrors invoicing/models.py's Invoice
-  // methods exactly (net per line -> tax on the net amounts -> the
-  // invoice-wide discount applied to the subtotal+tax) so what's shown
-  // here never drifts from what the backend actually saves.
-  const taxPercent = Number(account?.service_tax_percent ?? 0);
-  const subtotal = lineItems.reduce((sum, item) => sum + lineNet(item, services), 0);
-  const tax = lineItems.reduce((sum, item) => {
-    const service = services.find((s) => s.id === item.service);
-    return service?.is_taxable ? sum + lineNet(item, services) * (taxPercent / 100) : sum;
-  }, 0);
-  const preDiscountTotal = subtotal + tax;
-  const selectedInvoiceDiscount = discounts.find((d) => d.id === invoiceDiscount);
-  const invoiceDiscountAmount = selectedInvoiceDiscount
-    ? selectedInvoiceDiscount.type === "flat"
-      ? Math.min(Number(selectedInvoiceDiscount.amount), preDiscountTotal)
-      : preDiscountTotal * (Number(selectedInvoiceDiscount.amount) / 100)
-    : 0;
-  const total = preDiscountTotal - invoiceDiscountAmount;
+  // The totals come from the server. The same calculation that saves the invoice runs
+  // here as a preview (see invoicing/totals.py), so the numbers on this screen are the
+  // numbers that get saved. The screen never works out its own rounding.
+  const quoteRequest = JSON.stringify({
+    line_items: lineItems
+      .filter((item) => item.service !== "")
+      .map((item) => ({
+        service: item.service,
+        quantity: item.quantity,
+        discount_type: item.discountType,
+        discount_value: item.discountValue || null,
+      })),
+    discount: invoiceDiscount || null,
+  });
+  const [quote, setQuote] = useState<{ request: string; totals: InvoiceQuote | null } | null>(null);
 
-  // Live paid/balance — per Mako, this reacts to the Amount field as
-  // it's typed into, not just to payments already added to the list
-  // below, so there's never a need to do the math by hand. Negative
-  // balance = overpaid.
+  useEffect(() => {
+    const body = JSON.parse(quoteRequest) as { line_items: unknown[] };
+    if (body.line_items.length === 0) return;
+    // Waits a moment after each change, so typing a quantity doesn't send a request per keystroke.
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiFetch<InvoiceQuote>("/api/invoicing/invoices/preview/", { method: "POST", body })
+        .then((totals) => {
+          if (!cancelled) setQuote({ request: quoteRequest, totals });
+        })
+        .catch(() => {
+          if (!cancelled) setQuote({ request: quoteRequest, totals: null });
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [quoteRequest]);
+
+  // Only show a quote that matches what's on screen right now. Anything older waits for its own answer.
+  const currentQuote = quote && quote.request === quoteRequest ? quote.totals : null;
+  const quoteReady = currentQuote !== null;
+  const subtotal = Number(currentQuote?.subtotal ?? 0);
+  const tax = Number(currentQuote?.tax ?? 0);
+  const invoiceDiscountAmount = Number(currentQuote?.discount ?? 0);
+  const total = Number(currentQuote?.total ?? 0);
   const savedPaymentsTotal = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   const pendingAmount = Number(amount || 0);
   const livePaid = savedPaymentsTotal + pendingAmount;
@@ -481,8 +497,8 @@ export function CreateInvoiceModal({
             <span>{money(livePaid)}</span>
           </div>
           <div className="flex justify-between rounded-lg bg-white px-2 py-1.5 font-semibold text-gray-900 shadow-sm">
-            <span>Balance due</span>
-            <span className={liveBalance < 0 ? "text-red-600" : ""}>{money(liveBalance)}</span>
+            <span>{liveBalance < -0.005 ? "Overpaid by" : "Balance due"}</span>
+            <span className={liveBalance < -0.005 ? "text-amber-700" : ""}>{money(liveBalance < -0.005 ? -liveBalance : liveBalance)}</span>
           </div>
         </div>
 
@@ -555,10 +571,10 @@ export function CreateInvoiceModal({
           data-tour-id="invoice-options"
         >
           <ErrorText>{error}</ErrorText>
-          <Button type="button" variant="secondary" onClick={() => handleSave("quote")} disabled={saving !== null}>
+          <Button type="button" variant="secondary" onClick={() => handleSave("quote")} disabled={saving !== null || !quoteReady}>
             {saving === "quote" ? "Saving…" : "Quote"}
           </Button>
-          <Button type="button" onClick={() => handleSave("unpaid")} disabled={saving !== null}>
+          <Button type="button" onClick={() => handleSave("unpaid")} disabled={saving !== null || !quoteReady}>
             {saving === "save" ? "Saving…" : hasPayment ? "Finalize Invoice" : "No Payment"}
           </Button>
         </div>

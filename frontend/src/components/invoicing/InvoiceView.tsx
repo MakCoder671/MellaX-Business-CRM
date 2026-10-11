@@ -9,6 +9,7 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { formatAddressLines } from "@/lib/address";
 import { useAuth } from "@/lib/auth-context";
 import { Button, Card, ErrorText } from "@/components/form";
+import { CardPaymentModal } from "./CardPaymentModal";
 
 // ----------------------------------------------------------------------------
 // The invoice itself, shared by the standalone /dashboard/invoices/[id]
@@ -67,6 +68,11 @@ type Payment = {
   amount: string;
   date_received: string;
   is_refund: boolean;
+  // Card payments taken through Stripe. Empty for everything else.
+  processor: string;
+  processor_intent: string;
+  card_brand: string;
+  card_last4: string;
 };
 
 type Invoice = {
@@ -115,6 +121,15 @@ const STATUS_STYLES: Record<Invoice["status"], string> = {
 // that `${n.toFixed(2)}` would give on a negative number.
 function money(amount: number) {
   return amount < 0 ? `-$${Math.abs(amount).toFixed(2)}` : `$${amount.toFixed(2)}`;
+}
+
+// How much of one card payment can still go back to the card. Stripe refunds
+// share the payment's intent id, so we take away every refund already sent.
+function refundableOn(payment: Payment, all: Payment[]) {
+  const sent = all
+    .filter((r) => r.is_refund && r.processor_intent === payment.processor_intent)
+    .reduce((sum, r) => sum + Number(r.amount), 0);
+  return Number(payment.amount) - sent;
 }
 
 // The dollar amount a discount actually knocks off a line — shown next
@@ -203,6 +218,15 @@ export function InvoiceView({
   const [refundError, setRefundError] = useState<string | null>(null);
   const [submittingRefund, setSubmittingRefund] = useState(false);
 
+  // "Take Payment" popup (card through Stripe)
+  const [showCardPayment, setShowCardPayment] = useState(false);
+
+  // The refund box open under one card payment in the history list
+  const [stripeRefundId, setStripeRefundId] = useState<number | null>(null);
+  const [stripeRefundAmount, setStripeRefundAmount] = useState("");
+  const [stripeRefundError, setStripeRefundError] = useState<string | null>(null);
+  const [submittingStripeRefund, setSubmittingStripeRefund] = useState(false);
+
   function load() {
     apiFetch<Invoice>(`/api/invoicing/invoices/${invoiceId}/`).then((inv) => {
       setInvoice(inv);
@@ -231,7 +255,7 @@ export function InvoiceView({
     if (discountId === null) return null;
     const d = discounts.find((d) => d.id === discountId);
     if (!d) return null;
-    return d.type === "percent" ? `${d.name} (${d.amount}%)` : `${d.name} ($${d.amount})`;
+    return d.type === "percent" ? `${d.name}, ${d.amount}% off` : `${d.name}, $${d.amount} off`;
   }
 
   const locked = invoice?.is_locked ?? false;
@@ -411,6 +435,58 @@ export function InvoiceView({
     }
   }
 
+  // Sends money back to the customer's card through Stripe, then adds a credit line
+  // (the same kind the Refund button makes) so the invoice total and balance come out right.
+  // Stripe goes first: if the credit line fails after that, the money is already back,
+  // so the error tells the owner to add the credit with the Refund button.
+  async function handleStripeRefund(payment: Payment) {
+    if (!invoice) return;
+    const amount = Number(stripeRefundAmount);
+    if (!amount || amount <= 0) {
+      setStripeRefundError("Enter an amount to refund.");
+      return;
+    }
+    // The line item needs a service. Credit the service the sale was for.
+    const original = invoice.line_items.find((li) => !li.is_voided && !li.is_refund_line);
+    if (!original) {
+      setStripeRefundError("This invoice has no sale line to credit. Use Refund on the left instead.");
+      return;
+    }
+    if (!confirm(`Send $${amount.toFixed(2)} back to the card ending in ${payment.card_last4}? Stripe can't undo a refund.`)) return;
+
+    setStripeRefundError(null);
+    setSubmittingStripeRefund(true);
+    try {
+      await apiFetch(`/api/invoicing/payments/${payment.id}/stripe-refund/`, {
+        method: "POST",
+        body: { amount: amount.toFixed(2) },
+      });
+      try {
+        await apiFetch(`/api/invoicing/invoices/${invoiceId}/line-items/`, {
+          method: "POST",
+          body: {
+            service: original.service,
+            quantity: 1,
+            is_refund_line: true,
+            unit_price: amount.toFixed(2),
+            note: `Refund to card ending in ${payment.card_last4}`,
+          },
+        });
+      } catch {
+        setStripeRefundError("The money went back to the card, but the invoice credit didn't save. Use Refund on the left to add it.");
+        load();
+        return;
+      }
+      setStripeRefundId(null);
+      setStripeRefundAmount("");
+      load();
+    } catch (err) {
+      setStripeRefundError(err instanceof ApiError ? err.message : "Something went wrong.");
+    } finally {
+      setSubmittingStripeRefund(false);
+    }
+  }
+
   async function handleDelete() {
     if (!invoice) return;
     if (!confirm(`Delete ${invoice.invoice_number}? This can't be undone.`)) return;
@@ -461,6 +537,15 @@ export function InvoiceView({
           >
             {editing ? <X className="h-4 w-4" strokeWidth={2} /> : <Pencil className="h-4 w-4" strokeWidth={2} />}
             {editing ? "Done Editing" : "Edit"}
+          </Button>
+        )}
+        {!locked && !isQuote && balanceDue > 0.005 && (
+          <Button
+            className="flex w-full items-center justify-center gap-2"
+            onClick={() => setShowCardPayment(true)}
+            data-tour-id="invoice-view-take-payment"
+          >
+            <CreditCard className="h-4 w-4" strokeWidth={2} /> Take Payment
           </Button>
         )}
         {!locked && !isQuote && (
@@ -901,7 +986,7 @@ export function InvoiceView({
           </div>
           {invoice.discount && (
             <div className="flex justify-between text-gray-500">
-              <span>Discount{invoiceDiscountLabel(invoice.discount) ? ` (${invoiceDiscountLabel(invoice.discount)})` : ""}</span>
+              <span>{invoiceDiscountLabel(invoice.discount) ? `Discount: ${invoiceDiscountLabel(invoice.discount)}` : "Discount"}</span>
               <span>-${invoice.discount_amount.toFixed(2)}</span>
             </div>
           )}
@@ -916,8 +1001,17 @@ export function InvoiceView({
                 <span>{money(paid)}</span>
               </div>
               <div className="flex justify-between rounded-lg bg-white px-2 py-1.5 font-semibold text-gray-900 shadow-sm">
-                <span>Balance due</span>
-                <span className={balanceDue < 0 ? "text-red-600" : ""}>{money(balanceDue)}</span>
+                {balanceDue < -0.005 ? (
+                  <>
+                    <span>Overpaid by</span>
+                    <span className="text-amber-700">{money(-balanceDue)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Balance due</span>
+                    <span>{money(balanceDue)}</span>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -937,9 +1031,13 @@ export function InvoiceView({
               <p className="mt-2 text-sm text-gray-500">No payments recorded yet.</p>
             ) : (
               <ul className="mt-2 space-y-1.5 text-sm">
-                {invoice.payment_records.map((p) => (
+                {invoice.payment_records.map((p) => {
+                  // Only a card payment taken through Stripe can go back to the card from here.
+                  const refundable = refundableOn(p, invoice.payment_records);
+                  const canRefundToCard = !locked && !p.is_refund && p.processor === "stripe" && refundable > 0.005;
+                  return (
+                  <Fragment key={p.id}>
                   <li
-                    key={p.id}
                     className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2"
                   >
                     {editingPaymentId === p.id ? (
@@ -965,7 +1063,8 @@ export function InvoiceView({
                     ) : (
                       <span className="flex items-center gap-2 text-gray-700">
                         <CreditCard className="h-3.5 w-3.5 text-gray-400" strokeWidth={2} />
-                        {tenderTypes.find((t) => t.id === p.tender_type)?.name ?? "Payment"} · {p.date_received}
+                        {tenderTypes.find((t) => t.id === p.tender_type)?.name ?? "Payment"}
+                        {p.card_last4 && ` ending in ${p.card_last4}`} · {p.date_received}
                         {p.is_refund && <span className="ml-1 text-amber-600">(refund)</span>}
                         {editing && (
                           <button onClick={() => startEditingPayment(p)} className="ml-1 text-xs text-emerald-700 hover:underline">
@@ -974,9 +1073,57 @@ export function InvoiceView({
                         )}
                       </span>
                     )}
-                    <span className="font-medium text-gray-900">${Number(p.amount).toFixed(2)}</span>
+                    <span className="flex items-center gap-3">
+                      {canRefundToCard && stripeRefundId !== p.id && (
+                        <button
+                          onClick={() => {
+                            setStripeRefundId(p.id);
+                            setStripeRefundAmount(refundable.toFixed(2));
+                            setStripeRefundError(null);
+                          }}
+                          className="text-xs font-medium text-amber-700 hover:underline"
+                        >
+                          Refund to card
+                        </button>
+                      )}
+                      <span className="font-medium text-gray-900">${Number(p.amount).toFixed(2)}</span>
+                    </span>
                   </li>
-                ))}
+                  {stripeRefundId === p.id && (
+                    <li className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
+                      <p>
+                        Send money back to the card ending in {p.card_last4}. Up to ${refundable.toFixed(2)} can still go back.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="flex items-center gap-1.5">
+                          $
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            max={refundable.toFixed(2)}
+                            value={stripeRefundAmount}
+                            onChange={(e) => setStripeRefundAmount(e.target.value)}
+                            className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                          />
+                        </label>
+                        <Button type="button" onClick={() => handleStripeRefund(p)} disabled={submittingStripeRefund}>
+                          {submittingStripeRefund ? "Sending…" : "Send refund"}
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => setStripeRefundId(null)}
+                          className="text-sm text-gray-600 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      <ErrorText>{stripeRefundError}</ErrorText>
+                    </li>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </ul>
             )}
           </div>
@@ -984,6 +1131,23 @@ export function InvoiceView({
           </div>
         </div>
       </div>
+
+      {/* Take Payment popup (card through Stripe). Reloads the invoice when it closes,
+          so an approved payment shows up in the list straight away. */}
+      {showCardPayment && (
+        <CardPaymentModal
+          invoiceId={invoiceId}
+          balance={balanceDue}
+          onClose={() => {
+            setShowCardPayment(false);
+            load();
+          }}
+          onDone={() => {
+            setShowCardPayment(false);
+            load();
+          }}
+        />
+      )}
 
       {/* Record Payment popup */}
       {showPaymentForm && (
@@ -1078,6 +1242,13 @@ export function InvoiceView({
             <p className="mt-2 text-xs text-gray-500">
               Adds a refund line to the invoice and records the money going back out.
             </p>
+            {/* This popup only writes the refund down. It doesn't move money on a card. */}
+            {invoice.payment_records.some((p) => p.processor === "stripe" && !p.is_refund) && (
+              <p className="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-950">
+                This invoice has a card payment. Recording a refund here doesn&apos;t send money back to the card.
+                To refund the card, use <span className="font-medium">Refund to card</span> under that payment.
+              </p>
+            )}
             <form onSubmit={handleSubmitRefund} className="mt-4 space-y-3">
               <label className="block text-sm">
                 Item being refunded
