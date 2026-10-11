@@ -1,0 +1,55 @@
+# Render Blueprint - deploys the Django backend and a managed Postgres
+# database together. The Next.js frontend is deliberately NOT in here - it
+# deploys separately (Vercel, or wherever you land on).
+#
+# To use: push this repo to GitHub, then in Render choose "New > Blueprint"
+# and point it at this repo - Render reads this file and sets both services
+# up. Afterward, fill in every env var below marked "sync: false" in
+# Render's dashboard; those are real secrets/URLs this file deliberately
+# doesn't contain. (Render's own Blueprint format does shift over time -
+# worth a quick check against render.com/docs/blueprint-spec before your
+# first deploy, in case a key name here has since changed.)
+services:
+  - type: web
+    name: mellax-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    startCommand: "gunicorn mellax.wsgi:application"
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mellax-db
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        sync: false # your Render backend hostname and/or your real domain, comma-separated
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false # your frontend's real URL(s), comma-separated
+      - key: FRONTEND_URL
+        sync: false # your frontend's real URL - used in emailed links (verification, password reset)
+      - key: OWNER_NOTIFY_EMAIL
+        sync: false # where cancellations and Feedback & Support submissions get emailed
+      - key: EMAIL_BACKEND
+        value: "django.core.mail.backends.smtp.EmailBackend"
+      - key: EMAIL_HOST
+        value: "smtp.resend.com"
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: EMAIL_HOST_USER
+        value: "resend"
+      - key: EMAIL_HOST_PASSWORD
+        sync: false # your Resend API key
+      - key: DEFAULT_FROM_EMAIL
+        sync: false # e.g. "MellaX <hello@yourdomain.com>" once your domain is verified in Resend
+      - key: INTEGRATION_ENCRYPTION_KEY
+        generateValue: true
+
+databases:
+  - name: mellax-db
+    plan: free
