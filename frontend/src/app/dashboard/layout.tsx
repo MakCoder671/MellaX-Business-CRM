@@ -12,6 +12,7 @@ import {
   Megaphone,
   Menu,
   Package,
+  Plug,
   Settings as SettingsIcon,
   Users,
   Wrench,
@@ -44,6 +45,7 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
   { href: "/dashboard/marketing", label: "Marketing", icon: Megaphone },
   { href: "/dashboard/landing-page", label: "Landing Page", icon: Globe },
+  { href: "/dashboard/integrations", label: "Integrations", icon: Plug },
   { href: "/dashboard/settings", label: "Settings", icon: SettingsIcon },
 ];
 

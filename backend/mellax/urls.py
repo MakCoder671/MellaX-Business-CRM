@@ -25,6 +25,7 @@ urlpatterns = [
     path("api/reports/", include("reports.urls")),
     path("api/marketing/", include("marketing.urls")),
     path("api/campaigns/", include("campaigns.urls")),
+    path("api/integrations/", include("integrations.urls")),
 ]
 
 # Django's dev server doesn't serve user-uploaded files (logos, QR codes,
