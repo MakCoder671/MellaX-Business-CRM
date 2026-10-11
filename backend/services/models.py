@@ -29,6 +29,12 @@ class Service(TenantScopedModel):
     is_taxable = models.BooleanField(default=True)  # controls whether this line item gets taxed on an invoice
 
     is_product = models.BooleanField(default=False)  # False = shows under Services, True = shows under Products
+    # How long one of this service takes — online booking (landing page) uses it
+    # to offer slots that fit. Products ignore it.
+    duration_minutes = models.PositiveIntegerField(default=60)
+    # Whether this shows on the business's public landing page. Off by default,
+    # so internal or retired items never appear there without the owner choosing it.
+    show_on_landing_page = models.BooleanField(default=False)
 
     # Inventory tracking — only meaningful when is_product=True, and
     # even then it's optional: a product with either of these left

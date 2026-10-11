@@ -18,6 +18,8 @@ class ServiceSerializer(serializers.ModelSerializer):
             "description",
             "is_taxable",
             "is_product",
+            "duration_minutes",
+            "show_on_landing_page",
             "stock_quantity",
             "low_stock_threshold",
             "low_stock_dismissed",

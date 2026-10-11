@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarChart3, Boxes, Receipt, Scale, TrendingUp, Users } from "lucide-react";
+import { BarChart3, Boxes, Calculator, ChartLine, FileSpreadsheet, Receipt, Scale, TrendingUp, Users, Wallet } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
 import { Button, Card, Field } from "@/components/form";
@@ -13,6 +13,10 @@ import { ServiceRevenueChart } from "@/components/reports/ServiceRevenueChart";
 import { ClientRevenueChart } from "@/components/reports/ClientRevenueChart";
 import { InvoiceStatusChart } from "@/components/reports/InvoiceStatusChart";
 import { StockLevelsChart } from "@/components/reports/StockLevelsChart";
+import { GrowthDashboard } from "@/components/reports/GrowthDashboard";
+import { GrowthCalculator } from "@/components/reports/GrowthCalculator";
+import { ExpensesPanel } from "@/components/reports/ExpensesPanel";
+import { TaxCenter } from "@/components/reports/TaxCenter";
 
 // Two reports in one page now: the original Profit & Loss view, and (per
 // Mako) what used to be its own "Invoices" nav tab — seeing every
@@ -28,6 +32,8 @@ type ProfitLoss = {
   net: number;
   cogs: number;
   gross_profit: number;
+  expenses: number;
+  profit: number;
   tax_collected: number;
 };
 
@@ -79,21 +85,25 @@ const STATUS_STYLES: Record<Invoice["status"], string> = {
 const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 const today = new Date().toISOString().slice(0, 10);
 
-type Tab = "profit-loss" | "by-item" | "by-client" | "invoices" | "inventory";
+type Tab = "growth" | "calculator" | "profit-loss" | "expenses" | "by-item" | "by-client" | "invoices" | "inventory" | "tax";
 
 // Tab labels spell out what each report actually shows instead of the
 // generic "By Service" / "By Client" this used to say — a first-time
 // visitor should be able to tell what they'll see before clicking.
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
+  { id: "growth", label: "Growth", icon: ChartLine },
+  { id: "calculator", label: "Growth Calculator", icon: Calculator },
   { id: "profit-loss", label: "Profit & Loss", icon: Scale },
+  { id: "expenses", label: "Expenses", icon: Wallet },
   { id: "by-item", label: "Service Performance", icon: TrendingUp },
   { id: "by-client", label: "Top Clients", icon: Users },
   { id: "invoices", label: "Invoice History", icon: Receipt },
   { id: "inventory", label: "Stock Levels", icon: Boxes },
+  { id: "tax", label: "Tax & Exports", icon: FileSpreadsheet },
 ];
 
 export default function ReportsPage() {
-  const [tab, setTab] = useState<Tab>("profit-loss");
+  const [tab, setTab] = useState<Tab>("growth");
 
   const [start, setStart] = useState(startOfYear);
   const [end, setEnd] = useState(today);
@@ -213,7 +223,7 @@ export default function ReportsPage() {
       <PageHeader
         icon={BarChart3}
         title="Reports"
-        description="Profit & loss, your top performers, and inventory health, all in one place."
+        description="Track growth, plan what to change next, log expenses, and export everything your accountant needs."
       />
 
       <div className="flex flex-wrap gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
@@ -231,6 +241,11 @@ export default function ReportsPage() {
         ))}
       </div>
 
+      {tab === "growth" && <GrowthDashboard />}
+      {tab === "calculator" && <GrowthCalculator />}
+      {tab === "expenses" && <ExpensesPanel />}
+      {tab === "tax" && <TaxCenter />}
+
       {tab === "profit-loss" && (
         <div className="max-w-2xl space-y-6">
           <p className="text-sm text-gray-500">
@@ -246,7 +261,7 @@ export default function ReportsPage() {
           {pnl && (
             <Card className="divide-y divide-gray-200 p-4 text-sm">
               <div className="flex justify-between py-2">
-                <span className="text-gray-500">Revenue</span>
+                <span className="text-gray-500">Sales, before sales tax</span>
                 <span>${pnl.revenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between py-2">
@@ -265,8 +280,16 @@ export default function ReportsPage() {
                 <span>Gross profit</span>
                 <span>${pnl.gross_profit.toFixed(2)}</span>
               </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-500">Expenses (from the Expenses tab)</span>
+                <span>-${pnl.expenses.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between py-2 text-base font-semibold">
+                <span>Profit after expenses</span>
+                <span>${pnl.profit.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between py-2 text-gray-500">
-                <span>Tax collected</span>
+                <span>Sales tax collected (belongs to the state, not profit)</span>
                 <span>${pnl.tax_collected.toFixed(2)}</span>
               </div>
             </Card>

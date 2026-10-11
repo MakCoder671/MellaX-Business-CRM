@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { DollarSign, ListChecks, Pencil, Plus, Trash2, Wrench } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { CostField } from "@/components/CostField";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 import { PageHeader } from "@/components/PageHeader";
+import { DURATION_OPTIONS, formatDuration } from "@/components/calendar/helpers";
 import { StatCard } from "@/components/StatCard";
 
 // Same list-form-delete pattern as the Clients page — see that file's
@@ -18,6 +20,7 @@ type Service = {
   cost: string | null; // what it costs the business to deliver this — optional, used for Cost of Goods Sold in Reports
   description: string;
   is_taxable: boolean;
+  duration_minutes: number; // how long one of these takes — online booking uses it to offer slots that fit
 };
 
 export default function ServicesPage() {
@@ -28,6 +31,7 @@ export default function ServicesPage() {
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
   const [description, setDescription] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,6 +48,7 @@ export default function ServicesPage() {
     setPrice("");
     setCost("");
     setDescription("");
+    setDurationMinutes(60);
   }
 
   function startAdding() {
@@ -57,6 +62,7 @@ export default function ServicesPage() {
     setPrice(service.price);
     setCost(service.cost ?? "");
     setDescription(service.description);
+    setDurationMinutes(service.duration_minutes);
     setShowForm(true);
   }
 
@@ -65,7 +71,7 @@ export default function ServicesPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const body = { name, price, cost: cost || null, description, is_taxable: true };
+      const body = { name, price, cost: cost || null, description, is_taxable: true, duration_minutes: durationMinutes };
       if (editingId === null) {
         await apiFetch("/api/services/", { method: "POST", body });
       } else {
@@ -136,14 +142,26 @@ export default function ServicesPage() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
-            <Field
-              label="Cost (optional)"
-              type="number"
-              step="0.01"
-              min="0"
+            <CostField
               value={cost}
-              onChange={(e) => setCost(e.target.value)}
+              onChange={setCost}
+              price={price}
+              help="The supplies or product you use each time you do this service, like gloves, towels, or color. Leave blank if you don't track it. Equipment and rent go under Expenses on the Reports page."
             />
+            <label className="block text-sm font-medium text-gray-700">
+              How long it takes
+              <select
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm"
+              >
+                {DURATION_OPTIONS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {formatDuration(minutes)}
+                  </option>
+                ))}
+              </select>
+            </label>
             <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
             <div className="col-span-full flex items-center gap-3">
               <Button type="submit" disabled={submitting}>
@@ -196,6 +214,7 @@ export default function ServicesPage() {
                 </div>
               </div>
               <div className="mt-auto flex items-center justify-between border-t border-gray-100 pt-3">
+                <span className="text-sm text-gray-500">{formatDuration(service.duration_minutes)}</span>
                 <span className="text-lg font-semibold text-gray-900">
                   ${service.price}
                   {service.cost !== null && <span className="ml-1 text-xs font-normal text-gray-400">costs ${service.cost}</span>}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Boxes, Package, PackagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 
 import { apiFetch, ApiError } from "@/lib/api";
+import { CostField } from "@/components/CostField";
 import { Button, Card, ErrorText, Field } from "@/components/form";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
@@ -190,13 +191,11 @@ export default function ProductsPage() {
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
-            <Field
-              label="Cost (optional)"
-              type="number"
-              step="0.01"
-              min="0"
+            <CostField
               value={cost}
-              onChange={(e) => setCost(e.target.value)}
+              onChange={setCost}
+              price={price}
+              help="What you paid for one unit, from your supplier. This is used to work out your profit on each sale."
             />
             <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
             <Field

@@ -2,10 +2,22 @@ from datetime import date
 from decimal import Decimal
 
 from django.db.models import Sum
+from django.http import Http404
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.views import TenantScopedModelViewSet
 from invoicing.models import Invoice, InvoiceLineItem, PaymentRecord
+
+from .core import QUALIFYING_STATUSES, expenses_between, parse_dates, revenue_ex_tax_between
+from .exports import EXPORT_KINDS, export_clients, export_expenses, export_invoices, export_payments, export_schedule_c
+from .growth import growth_report, monthly_series
+from .models import Expense, OtherIncome, RecurringExpense
+from .recurring import ensure_recurring, stop_recurring
+from .schedule_c import SCHEDULE_C_CATEGORIES
+from .serializers import ExpenseSerializer, OtherIncomeSerializer, RecurringExpenseSerializer
+from .tax import quarter_summary, tax_packet, year_summary
 
 # There's no models.py content in this app — a "report" isn't a thing that
 # gets stored in the database, it's just numbers CALCULATED from Invoice,
@@ -25,7 +37,6 @@ CENTS = Decimal("0.01")
 # tradeoff: a fully-refunded invoice still counts 100% toward
 # cost/tax/by-item here (there's no per-line refund proration in the
 # data model) — a deliberate v1 simplification, not an oversight.
-QUALIFYING_STATUSES = [Invoice.STATUS_PAID, Invoice.STATUS_REFUNDED]
 
 
 def _default_date_range(request):
@@ -61,11 +72,8 @@ class ProfitLossView(APIView):
     def get(self, request):
         start, end = _default_date_range(request)
 
-        payments = PaymentRecord.objects.for_account(request.user).filter(
-            date_received__gte=start, date_received__lte=end
-        )
-        revenue = payments.filter(is_refund=False).aggregate(total=Sum("amount"))["total"] or 0
-        refunds = payments.filter(is_refund=True).aggregate(total=Sum("amount"))["total"] or 0
+        # Sales only, before sales tax. Sales tax belongs to the state, so it isn't revenue.
+        revenue, refunds, _ = revenue_ex_tax_between(request.user, start, end)
         # `aggregate(...)["total"] or 0` — if there are zero matching rows,
         # Sum() returns None instead of 0, so the `or 0` fills in a sane
         # default instead of the response containing `null`.
@@ -95,6 +103,11 @@ class ProfitLossView(APIView):
         net = revenue - refunds
         gross_profit = (net - cogs).quantize(CENTS)  # net - cogs is always a real Decimal even when net itself is the bare int 0 (zero payments this period)
 
+        # Operating expenses (rent, supplies, ads, software...) come off the top.
+        # Before this, profit ignored them, so it looked much higher than what the business kept.
+        expenses = sum((e.amount for e in expenses_between(request.user, start, end)), Decimal("0")).quantize(CENTS)
+        profit = (gross_profit - expenses).quantize(CENTS)
+
         return Response(
             {
                 "start": start,
@@ -104,6 +117,8 @@ class ProfitLossView(APIView):
                 "net": net,
                 "cogs": cogs,
                 "gross_profit": gross_profit,
+                "expenses": expenses,
+                "profit": profit,
                 "tax_collected": tax_collected,
             }
         )
@@ -194,3 +209,166 @@ class RevenueByClientView(APIView):
         results.sort(key=lambda r: r["revenue"], reverse=True)
 
         return Response({"start": start, "end": end, "results": results})
+
+
+# ----------------------------------------------------------------------------
+# Growth dashboard, twelve-month series for the calculator, tax center, exports,
+# and expenses. Everything here is read-only except the expenses, which the
+# owner enters and can change.
+# ----------------------------------------------------------------------------
+
+
+
+class GrowthView(APIView):
+    """GET /api/reports/growth/?start=&end= — the growth dashboard for one date range, with last year beside it."""
+
+    def get(self, request):
+        today = date.today()
+        start, end = parse_dates(request, date(today.year, 1, 1), today)
+        return Response(growth_report(request.user, start, end))
+
+
+class MonthlySeriesView(APIView):
+    """GET /api/reports/monthly/?months=12 — the last N months, oldest first. The calculator uses this."""
+
+    def get(self, request):
+        try:
+            months = int(request.query_params.get("months", 12))
+        except ValueError as exc:
+            raise ValidationError({"detail": "Months needs to be a whole number."}) from exc
+        months = max(1, min(months, 24))
+        return Response({"months": monthly_series(request.user, months)})
+
+
+def _year_param(request):
+    try:
+        return int(request.query_params.get("year", date.today().year))
+    except ValueError as exc:
+        raise ValidationError({"detail": "Year needs to be a whole number, like 2026."}) from exc
+
+
+class TaxYearView(APIView):
+    """GET /api/reports/tax/year/?year=2026 — the Schedule C summary, in the order of the form's lines."""
+
+    def get(self, request):
+        return Response(year_summary(request.user, _year_param(request)))
+
+
+class TaxQuarterView(APIView):
+    """GET /api/reports/tax/quarters/?year=2026 — sales, taxable sales, and tax collected for each quarter."""
+
+    def get(self, request):
+        account = request.user
+        return Response(
+            quarter_summary(
+                account,
+                _year_param(request),
+                service_rate=str(account.service_tax_percent),
+                product_rate=str(account.product_tax_percent),
+            )
+        )
+
+
+class ExportView(APIView):
+    """GET /api/reports/export/<kind>/?start=&end= — a CSV file. Schedule C uses ?year= instead."""
+
+    def get(self, request, kind):
+        if kind not in EXPORT_KINDS:
+            raise Http404("We don't have that export.")
+        account = request.user
+        if kind == "schedule-c":
+            year = _year_param(request)
+            return export_schedule_c(account, year, year_summary(account, year))
+        today = date.today()
+        start, end = parse_dates(request, date(today.year, 1, 1), today)
+        builders = {
+            "payments": export_payments,
+            "invoices": export_invoices,
+            "expenses": export_expenses,
+            "clients": export_clients,
+        }
+        return builders[kind](account, start, end)
+
+
+class ExpenseViewSet(TenantScopedModelViewSet):
+    """
+    /api/reports/expenses/ — list, add, change, and delete expenses.
+    Filter the list with ?start=, ?end=, and ?category=.
+    """
+
+    queryset = Expense.objects.all()
+    serializer_class = ExpenseSerializer
+
+    def get_queryset(self):
+        ensure_recurring(self.request.user)
+        queryset = super().get_queryset()
+        start = self.request.query_params.get("start")
+        end = self.request.query_params.get("end")
+        category = self.request.query_params.get("category")
+        if start:
+            queryset = queryset.filter(date__gte=start)
+        if end:
+            queryset = queryset.filter(date__lte=end)
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(business_account=self.request.user)
+
+
+class ExpenseCategoriesView(APIView):
+    """GET /api/reports/expense-categories/ — the Schedule C categories, with their line numbers and hints."""
+
+    def get(self, request):
+        return Response([
+            {"key": key, "label": label, "line": line, "hint": hint}
+            for key, label, line, hint in SCHEDULE_C_CATEGORIES
+        ])
+
+
+class RecurringExpenseViewSet(TenantScopedModelViewSet):
+    """
+    /api/reports/recurring-expenses/ — costs that repeat every month.
+    Deleting one stops it. Months already logged stay on the books, and future months are removed.
+    """
+
+    queryset = RecurringExpense.objects.all()
+    serializer_class = RecurringExpenseSerializer
+
+    def get_queryset(self):
+        return super().get_queryset().filter(ended=False)
+
+    def perform_create(self, serializer):
+        serializer.save(business_account=self.request.user)
+        ensure_recurring(self.request.user)  # logs the months that have already happened
+
+    def perform_destroy(self, instance):
+        stop_recurring(instance)
+
+
+class OtherIncomeViewSet(TenantScopedModelViewSet):
+    """/api/reports/other-income/ — tips, reimbursements, and other business income that isn't an invoice."""
+
+    queryset = OtherIncome.objects.all()
+    serializer_class = OtherIncomeSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        start = self.request.query_params.get("start")
+        end = self.request.query_params.get("end")
+        if start:
+            queryset = queryset.filter(date__gte=start)
+        if end:
+            queryset = queryset.filter(date__lte=end)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(business_account=self.request.user)
+
+
+class TaxPacketView(APIView):
+    """GET /api/reports/tax/packet/?year=2026 — the whole year's tax packet, ready to print or hand to an accountant."""
+
+    def get(self, request):
+        return Response(tax_packet(request.user, _year_param(request)))

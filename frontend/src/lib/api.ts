@@ -11,7 +11,7 @@
 // NEXT_PUBLIC_ prefix is a Next.js convention — it means "it's safe to
 // bake this into the browser-side JavaScript bundle" (as opposed to a
 // secret that should only ever live on a server).
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
 
 // Django REST Framework sends back errors in a few different shapes
 // depending on what went wrong:
