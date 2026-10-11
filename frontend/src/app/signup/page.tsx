@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
-import { Button, Card, ErrorText, Field } from "@/components/form";
+import { ErrorText } from "@/components/form";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
 
 // ----------------------------------------------------------------------------
 // The signup form — steps 1, 2, and 4 of the plan doc's Sign-Up &
@@ -76,115 +78,121 @@ export default function SignupPage() {
   // simpler here than routing to a whole separate page for one message.
   if (done) {
     return (
-      <main className="mx-auto flex max-w-md flex-1 flex-col items-center justify-center px-4 text-center">
-        <h1 className="text-xl font-semibold">Check your email</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          We sent a verification link to <strong>{email}</strong>. Verify your
-          account, then log in to continue setting up your business.
+      <AuthShell
+        title="Check your email"
+        subtitle={`We sent a verification link to ${email}.`}
+        footer={
+          <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
+            Go to login
+          </Link>
+        }
+      >
+        <p className="text-sm text-ink/70">
+          Open the link we sent to finish verifying your account, then log in to start setting up your business.
         </p>
-        <Link href="/login" className="mt-6 text-sm text-emerald-700 underline">
-          Go to login
-        </Link>
-      </main>
+      </AuthShell>
     );
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-semibold">Create your MellaX account</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Real business tools, without enterprise prices.
-      </p>
+    <AuthShell
+      title="Create your account"
+      subtitle="Real business tools, without enterprise prices."
+      footer={
+        <>
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
+            Log in
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <AuthField
+          label="Business name"
+          required
+          value={businessName}
+          onChange={(e) => setBusinessName(e.target.value)}
+        />
+        <AuthField
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <AuthField
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <Card className="mt-6 p-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Field
-            label="Business name"
-            required
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-          />
-          <Field
-            label="Email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Field
-            label="Password"
-            type="password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <div>
-            <p className="text-sm font-medium text-gray-700">Choose your plan</p>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              {/* Two clickable cards instead of a dropdown/radio buttons —
-                  makes the price/description visible at a glance instead
-                  of hidden behind a click. */}
-              {PLANS.map((p) => (
-                <button
-                  type="button" // "button" (not "submit") so clicking a plan card doesn't accidentally submit the whole form
-                  key={p.id}
-                  onClick={() => setPlan(p.id)}
-                  className={`rounded-md border p-3 text-left text-sm transition-colors ${
-                    plan === p.id
-                      ? "border-emerald-600 ring-1 ring-emerald-600"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
-                >
-                  <span className="block font-medium">{p.name}</span>
-                  <span className="block text-emerald-700">{p.price}</span>
-                  <span className="mt-1 block text-xs text-gray-500">{p.blurb}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Billing isn&apos;t connected yet. Your account is created on this
-              plan now, and card collection via Stripe is coming before
-              launch.
-            </p>
+        <div>
+          <p className="text-sm font-medium text-ink/80">Choose your plan</p>
+          <div className="mt-1.5 grid grid-cols-2 gap-3">
+            {/* Two clickable cards instead of a dropdown/radio buttons —
+                makes the price/description visible at a glance instead
+                of hidden behind a click. */}
+            {PLANS.map((p) => (
+              <button
+                type="button" // "button" (not "submit") so clicking a plan card doesn't accidentally submit the whole form
+                key={p.id}
+                onClick={() => setPlan(p.id)}
+                className={`rounded-xl border p-3 text-left text-sm transition-colors ${
+                  plan === p.id
+                    ? "border-brand ring-1 ring-brand bg-brand-light/40"
+                    : "border-ink/15 hover:border-ink/30"
+                }`}
+              >
+                <span className="block font-medium text-ink">{p.name}</span>
+                <span className="block text-brand font-semibold">{p.price}</span>
+                <span className="mt-1 block text-xs text-ink/55">{p.blurb}</span>
+              </button>
+            ))}
           </div>
+          <p className="mt-2 text-xs text-ink/45">
+            Billing isn&apos;t connected yet. Your account is created on this
+            plan now, and card collection via Stripe is coming before
+            launch.
+          </p>
+        </div>
 
-          <label className="flex items-start gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              required
-              checked={acceptTos}
-              onChange={(e) => setAcceptTos(e.target.checked)}
-              className="mt-1"
-            />
-            <span>
-              I agree to the{" "}
-              <Link href="/terms" className="underline">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="underline">
-                Privacy Policy
-              </Link>
-              .
-            </span>
-          </label>
+        <label className="flex items-start gap-2 text-sm text-ink/70">
+          <input
+            type="checkbox"
+            required
+            checked={acceptTos}
+            onChange={(e) => setAcceptTos(e.target.checked)}
+            className="mt-1"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" className="font-medium text-brand underline">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="font-medium text-brand underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
 
-          <ErrorText>{error}</ErrorText>
+        <ErrorText>{error}</ErrorText>
 
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? "Creating account…" : "Create account"}
-          </Button>
-        </form>
-      </Card>
-
-      <p className="mt-4 text-center text-sm text-gray-600">
-        Already have an account?{" "}
-        <Link href="/login" className="text-emerald-700 underline">
-          Log in
-        </Link>
-      </p>
-    </main>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {submitting ? "Creating account…" : "Create account"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import { Button, Card, Field } from "@/components/form";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -32,28 +34,36 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-semibold">Reset your password</h1>
-      <Card className="mt-6 p-6">
-        {done ? (
-          <p className="text-sm text-gray-700">
-            If that email is registered, a reset link is on its way.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field
-              label="Email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Sending…" : "Send reset link"}
-            </Button>
-          </form>
-        )}
-      </Card>
-    </main>
+    <AuthShell
+      title="Reset your password"
+      subtitle="Enter the email on your account and we'll send a reset link."
+      footer={
+        <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
+          Back to login
+        </Link>
+      }
+    >
+      {done ? (
+        <p className="text-sm text-ink/70">If that email is registered, a reset link is on its way.</p>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <AuthField
+            label="Email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Sending…" : "Send reset link"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

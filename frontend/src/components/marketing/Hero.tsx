@@ -1,11 +1,17 @@
-import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
+
+import { BrowserFrame } from "./BrowserFrame";
 
 // The sales pitch, in one screen: what MellaX is, who it's for, and the
 // one thing that actually matters to a solo owner comparing CRMs — the
 // price. `<mark>` (styled via .mark-highlight in globals.css) does the
 // same job a real highlighter would on a printed flyer.
+//
+// The right side is a real screenshot of the dashboard (see
+// BrowserFrame), not an illustration — per Mako, a stranger deciding
+// whether to sign up should see the actual software, not a drawing of
+// someone vaguely happy at a laptop.
 export function Hero() {
   return (
     <section className="mx-auto max-w-6xl px-4 pt-14 pb-20 sm:px-6 sm:pt-20 sm:pb-28">
@@ -58,23 +64,20 @@ export function Hero() {
           </ul>
         </div>
 
-        <div className="relative mx-auto w-full max-w-md lg:mx-0">
-          <Image
-            src="/images/hero-doodle.png"
-            alt="Illustration of a small business owner working happily on a laptop showing an upward-trending chart, next to a coffee cup and a plant"
-            width={800}
-            height={800}
-            priority
-            className="w-full"
+        <div className="relative mx-auto w-full max-w-lg lg:mx-0">
+          <div
+            className="pointer-events-none absolute -inset-2 -z-10 rounded-[2rem] bg-brand/10 blur-2xl sm:-inset-6"
+            aria-hidden="true"
           />
+          <BrowserFrame src="/images/shot-dashboard.png" alt="The MellaX dashboard, showing today's bookings, revenue, and the calendar" />
 
-          <div className="absolute -bottom-2 left-2 flex items-center gap-3 rounded-2xl border border-ink/10 bg-card px-4 py-3 shadow-lg sm:left-6">
+          <div className="absolute -bottom-5 -left-4 flex items-center gap-3 rounded-2xl border border-ink/10 bg-card px-4 py-3 shadow-lg sm:-left-8">
             <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-light text-brand-dark">
               <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="text-left">
-              <p className="text-sm font-semibold text-ink">Invoice #0142 paid</p>
-              <p className="text-xs text-ink/50">Sent, viewed, and paid in one day</p>
+              <p className="text-sm font-semibold text-ink">Invoice #1001 paid</p>
+              <p className="text-xs text-ink/50">Sent, viewed, and paid the same day</p>
             </div>
           </div>
         </div>

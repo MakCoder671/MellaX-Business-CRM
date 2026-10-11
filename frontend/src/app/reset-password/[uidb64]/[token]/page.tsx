@@ -4,7 +4,9 @@ import Link from "next/link";
 import { use, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
-import { Button, Card, ErrorText, Field } from "@/components/form";
+import { ErrorText } from "@/components/form";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { AuthField } from "@/components/auth/AuthField";
 
 // ----------------------------------------------------------------------------
 // This page lives at a URL like /reset-password/MQ/abc123-xyz/ — the
@@ -49,33 +51,45 @@ export default function ResetPasswordPage({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
-      <h1 className="text-2xl font-semibold">Set a new password</h1>
-      <Card className="mt-6 p-6">
-        {done ? (
-          <div className="space-y-3 text-sm text-gray-700">
-            <p>Password updated.</p>
-            <Link href="/login" className="text-emerald-700 underline">
-              Log in
-            </Link>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field
-              label="New password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <ErrorText>{error}</ErrorText>
-            <Button type="submit" disabled={submitting} className="w-full">
-              {submitting ? "Saving…" : "Save new password"}
-            </Button>
-          </form>
-        )}
-      </Card>
-    </main>
+    <AuthShell
+      title="Set a new password"
+      subtitle="Choose something you haven't used here before."
+      footer={
+        !done && (
+          <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
+            Back to login
+          </Link>
+        )
+      }
+    >
+      {done ? (
+        <div className="space-y-3 text-sm text-ink/70">
+          <p>Password updated.</p>
+          <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
+            Log in
+          </Link>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <AuthField
+            label="New password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <ErrorText>{error}</ErrorText>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-1 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Saving…" : "Save new password"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

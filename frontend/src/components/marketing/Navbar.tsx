@@ -25,6 +25,9 @@ export function Navbar() {
           <a href="#pricing" className="transition-colors hover:text-ink">
             Pricing
           </a>
+          <a href="#faq" className="transition-colors hover:text-ink">
+            FAQ
+          </a>
         </div>
 
         <div className="flex items-center gap-3">

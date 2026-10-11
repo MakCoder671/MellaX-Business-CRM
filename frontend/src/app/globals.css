@@ -5,17 +5,22 @@
   from the dashboard's per-account --accent-* theme system above, since
   the marketing site's colors are a fixed brand choice, not something an
   account customizes in Settings > Theme. Exactly 5 colors total: one
-  brand green, three neutrals (cream, ink, card), one accent (the
-  marker-yellow highlight used on emphasized words in headlines).
+  brand indigo, three neutrals (cream, ink, card), one accent (the
+  marker-gold highlight used on emphasized words in headlines).
+
+  Was forest green before (#0b6e4f) — per Mako, that read as the same
+  generic "eco/trustworthy SaaS green" every other small-business tool
+  uses. Indigo was picked instead: still reads as trustworthy software,
+  but isn't the default everyone else reaches for.
 */
 @theme {
-  --color-cream: #f2f5e9;
-  --color-card: #fffdf6;
-  --color-ink: #14231c;
-  --color-brand: #0b6e4f;
-  --color-brand-dark: #074a34;
-  --color-brand-light: #dcefe1;
-  --color-highlight: #ffd84d;
+  --color-cream: #faf8f5;
+  --color-card: #ffffff;
+  --color-ink: #16152b;
+  --color-brand: #4f46e5;
+  --color-brand-dark: #312e81;
+  --color-brand-light: #e4e2fd;
+  --color-highlight: #ffc247;
   --font-display: var(--font-space-grotesk);
 }
 
@@ -86,6 +91,29 @@
 }
 .accent-bg:disabled {
   background: var(--accent-300, #6ee7b7);
+}
+
+/* The landing page gallery. A photo in the viewer fades and grows in each time
+   it changes. Anyone who has asked their phone for less motion sees no animation. */
+@keyframes lp-photo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.lp-fade-in {
+  animation: lp-photo-in 350ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-fade-in {
+    animation: none;
+  }
 }
 
 /* Same idea, for the Calendar widget's own accent (Day/Week/Month toggle,

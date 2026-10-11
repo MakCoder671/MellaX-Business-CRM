@@ -11,12 +11,18 @@ export function MarketingFooter() {
           </p>
         </div>
 
-        <div className="flex items-center gap-6 text-sm font-medium text-ink/70">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium text-ink/70 sm:justify-start">
           <Link href="/login" className="transition-colors hover:text-ink">
             Log in
           </Link>
           <Link href="/signup" className="transition-colors hover:text-ink">
             Get started
+          </Link>
+          <Link href="/terms" className="transition-colors hover:text-ink">
+            Terms
+          </Link>
+          <Link href="/privacy" className="transition-colors hover:text-ink">
+            Privacy
           </Link>
         </div>
 

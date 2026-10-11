@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
-import { Card } from "@/components/form";
+import { AuthShell } from "@/components/auth/AuthShell";
 
 // Same idea as the reset-password page — this is where the "verify your
 // email" link from the signup email actually lands. Unlike reset
@@ -38,15 +38,18 @@ export default function VerifyEmailPage({
   }, [uidb64, token]);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12 text-center">
-      <Card className="p-6">
-        <p className={status === "error" ? "text-red-600" : "text-gray-700"}>{message}</p>
-        {status === "success" && (
-          <Link href="/login" className="mt-4 inline-block text-sm text-emerald-700 underline">
+    <AuthShell
+      title="Verifying your email"
+      subtitle="One moment."
+      footer={
+        status === "success" && (
+          <Link href="/login" className="font-semibold text-brand hover:text-brand-dark">
             Log in
           </Link>
-        )}
-      </Card>
-    </main>
+        )
+      }
+    >
+      <p className={status === "error" ? "text-sm text-red-600" : "text-sm text-ink/70"}>{message}</p>
+    </AuthShell>
   );
 }

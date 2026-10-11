@@ -1,8 +1,10 @@
+import { Faq } from "@/components/marketing/Faq";
 import { FeatureGrid } from "@/components/marketing/FeatureGrid";
 import { Hero } from "@/components/marketing/Hero";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
 import { Navbar } from "@/components/marketing/Navbar";
-import { PricingStrip } from "@/components/marketing/PricingStrip";
+import { PlanComparison } from "@/components/marketing/PlanComparison";
+import { ProductShowcase } from "@/components/marketing/ProductShowcase";
 
 // The marketing splash page at "/" — the very first thing a stranger
 // sees. The Navbar handles "already logged in?" on its own (straight to
@@ -14,7 +16,9 @@ export default function Home() {
       <Navbar />
       <Hero />
       <FeatureGrid />
-      <PricingStrip />
+      <ProductShowcase />
+      <PlanComparison />
+      <Faq />
       <MarketingFooter />
     </main>
   );
