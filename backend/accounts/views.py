@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
+from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, permissions, status
@@ -9,8 +10,17 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from .models import BusinessAccount
-from .serializers import BusinessAccountSerializer, LoginSerializer, SignupSerializer
+from common.views import TenantScopedModelViewSet
+
+from .models import BusinessAccount, SupportRequest
+from .serializers import (
+    BusinessAccountSerializer,
+    ChangePlanSerializer,
+    LoginSerializer,
+    SignupSerializer,
+    SubscriptionSerializer,
+    SupportRequestSerializer,
+)
 from .tokens import email_verification_token
 
 # ----------------------------------------------------------------------------
@@ -53,6 +63,26 @@ def _send_verification_email(account, request):
     # so this doesn't actually send an email — it just prints it to the
     # terminal running `manage.py runserver`. Good enough for testing the
     # flow without needing a real email provider set up yet.
+
+
+def _notify_owner(subject, body, reply_to=None):
+    # Sends a plain email to Mako's own inbox (OWNER_NOTIFY_EMAIL in
+    # settings) for things worth knowing about right away — a cancellation,
+    # a new Feedback & Support submission. Used instead of making the
+    # owner check a dashboard for these. Deliberately never raises: a
+    # support request or a cancellation still has to go through and get
+    # saved even if this particular email fails to send.
+    if not settings.OWNER_NOTIFY_EMAIL:
+        return  # not configured (e.g. local dev) - nothing to send to yet
+    try:
+        EmailMessage(
+            subject=f"[MellaX] {subject}",
+            body=body,
+            to=[settings.OWNER_NOTIFY_EMAIL],
+            reply_to=[reply_to] if reply_to else None,
+        ).send(fail_silently=True)
+    except Exception:
+        pass
 
 
 class SignupView(generics.CreateAPIView):
@@ -226,3 +256,85 @@ class MeView(generics.RetrieveUpdateAPIView):
         # "me" always just means "whoever's logged in," so we skip the
         # lookup entirely and return the current user directly.
         return self.request.user
+
+
+class SubscriptionView(APIView):
+    """GET /api/accounts/subscription/ — Settings > Account & Subscription's plan, trial, and status."""
+
+    def get(self, request):
+        return Response(SubscriptionSerializer(request.user).data)
+
+
+class ChangePlanView(APIView):
+    """
+    POST /api/accounts/subscription/change-plan/ — switch between Basic and
+    Plus. Takes effect immediately, no proration, since nothing's actually
+    being charged today (see the big comment on BusinessAccount's
+    subscription fields in accounts/models.py).
+
+    Note this is only reachable while logged in, and canceling (see
+    CancelSubscriptionView) logs you out and blocks login entirely — so
+    there's no "change plan to undo a cancellation" path here. Once
+    canceled, getting back in means emailing support, not a self-serve
+    plan switch.
+    """
+
+    def post(self, request):
+        serializer = ChangePlanSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        account = request.user
+        account.plan_tier = serializer.validated_data["plan_tier"]
+        account.save(update_fields=["plan_tier"])
+        return Response(SubscriptionSerializer(account).data)
+
+
+class CancelSubscriptionView(APIView):
+    """
+    POST /api/accounts/subscription/cancel/ — closes the account.
+
+    Since there's no real billing yet, there's no "paid through" date to
+    honor, so this takes effect right now rather than "at the end of the
+    period" — the account is logged out everywhere immediately and can't
+    log back in. Nothing is deleted: all client/invoice/etc data stays
+    exactly as it was, so a reply to the notification email below is
+    enough to turn is_active back on by hand if they change their mind.
+    """
+
+    def post(self, request):
+        account = request.user
+        account.subscription_status = BusinessAccount.STATUS_CANCELED
+        account.canceled_at = timezone.now()
+        account.is_active = False
+        account.save(update_fields=["subscription_status", "canceled_at", "is_active"])
+        Token.objects.filter(user=account).delete()  # signs them out on every device right away, not just this one
+        _notify_owner(
+            f"{account.business_name} canceled their subscription",
+            f"{account.business_name} ({account.email}) just canceled, on the {account.plan_tier} plan.\n\n"
+            "Their data is still intact. Reactivate by flipping is_active back on for their account.",
+        )
+        return Response({"detail": "Your subscription has been canceled. We're sorry to see you go."})
+
+
+class SupportRequestViewSet(TenantScopedModelViewSet):
+    """
+    GET  /api/accounts/support/ — your own past bug reports, feature
+    requests, questions, and billing/refund requests (Settings > Feedback
+    & Support).
+    POST /api/accounts/support/ — send a new one. Saved here AND emailed
+    straight to the owner's inbox, so a submission is never just sitting
+    somewhere nobody reads it.
+    """
+
+    queryset = SupportRequest.objects.all()
+    serializer_class = SupportRequestSerializer
+    http_method_names = ["get", "post", "head", "options"]  # a submission is a one-way note, not something to edit or delete
+
+    def perform_create(self, serializer):
+        account = self.request.user
+        support_request = serializer.save(business_account=account)
+        category_label = dict(SupportRequest.CATEGORY_CHOICES).get(support_request.category, support_request.category)
+        _notify_owner(
+            f"{category_label} from {account.business_name}",
+            f"From: {account.business_name} <{account.email}>\nPlan: {account.plan_tier}\n\n{support_request.message}",
+            reply_to=account.email,
+        )

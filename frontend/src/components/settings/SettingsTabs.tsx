@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, CreditCard, Palette, CalendarClock } from "lucide-react";
+import { Building2, CreditCard, Palette, CalendarClock, Wallet, LifeBuoy } from "lucide-react";
 
 // ----------------------------------------------------------------------------
 // Settings had grown into one long scroll of six unrelated-looking
@@ -20,6 +20,8 @@ const TABS = [
   { href: "/dashboard/settings/theme", label: "Theme", icon: Palette },
   { href: "/dashboard/settings/calendar", label: "Calendar", icon: CalendarClock },
   { href: "/dashboard/settings/invoicing", label: "Invoicing", icon: CreditCard },
+  { href: "/dashboard/settings/subscription", label: "Account & Subscription", icon: Wallet },
+  { href: "/dashboard/settings/support", label: "Feedback & Support", icon: LifeBuoy },
 ];
 
 export function SettingsTabs() {

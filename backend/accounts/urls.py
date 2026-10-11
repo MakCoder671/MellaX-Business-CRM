@@ -1,6 +1,10 @@
 from django.urls import path
+from rest_framework.routers import DefaultRouter
 
 from . import views
+
+router = DefaultRouter()
+router.register("support", views.SupportRequestViewSet, basename="support-request")
 
 # ----------------------------------------------------------------------------
 # This maps URL paths to the view classes in views.py. It gets "mounted"
@@ -29,4 +33,7 @@ urlpatterns = [
         name="reset-password",
     ),
     path("me/", views.MeView.as_view(), name="me"),
-]
+    path("subscription/", views.SubscriptionView.as_view(), name="subscription"),
+    path("subscription/change-plan/", views.ChangePlanView.as_view(), name="change-plan"),
+    path("subscription/cancel/", views.CancelSubscriptionView.as_view(), name="cancel-subscription"),
+] + router.urls

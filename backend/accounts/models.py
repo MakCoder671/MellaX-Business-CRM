@@ -1,6 +1,20 @@
+import math
+from datetime import timedelta
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.utils import timezone
+
+from common.models import TenantScopedModel
+
+TRIAL_LENGTH = timedelta(days=5)  # the "demo" window, per Mako - 5 days to try it, then he reviews and activates it himself
+
+
+def _default_trial_end():
+    # A plain function (not a lambda) because Django needs to be able to
+    # serialize this default into a migration file — a lambda can't be.
+    return timezone.now() + TRIAL_LENGTH
 
 # ----------------------------------------------------------------------------
 # In MellaX, a "user" and a "business" are the same thing — there's no
@@ -193,7 +207,33 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
     accepted_tos_at = models.DateTimeField(null=True, blank=True)  # timestamp of "I agree to the Terms" checkbox
     is_email_verified = models.BooleanField(default=False)  # can't log in until this flips to True
 
-    is_active = models.BooleanField(default=True)  # Django's "is this account allowed to log in at all" flag
+    # --- Subscription (Settings > Account & Subscription) ---
+    # There's no real billing processor connected for MellaX's OWN
+    # subscriptions yet (separate thing from the per-business Stripe keys
+    # in invoicing/stripe_payments.py, which are for THEIR clients' card
+    # payments) — nobody's card is charged today.
+    #
+    # Every new signup starts "trialing" (shown to them as "Demo") - full
+    # access to everything except connecting a payment processor (see
+    # integrations/views.py's IntegrationConnectView), for TRIAL_LENGTH.
+    # Mako reviews it by hand afterward and flips this to "active" himself
+    # (Django admin, or a later self-serve/automated version of this) -
+    # that's what actually unlocks Stripe/Square for that business. There's
+    # no automatic expiry: a demo account doesn't lock itself out, it just
+    # stays a demo until someone looks at it.
+    STATUS_TRIALING = "trialing"
+    STATUS_ACTIVE = "active"
+    STATUS_CANCELED = "canceled"
+    SUBSCRIPTION_STATUS_CHOICES = [
+        (STATUS_TRIALING, "Demo"),
+        (STATUS_ACTIVE, "Active"),
+        (STATUS_CANCELED, "Canceled"),
+    ]
+    subscription_status = models.CharField(max_length=10, choices=SUBSCRIPTION_STATUS_CHOICES, default=STATUS_TRIALING)
+    trial_ends_at = models.DateTimeField(default=_default_trial_end)
+    canceled_at = models.DateTimeField(null=True, blank=True)
+
+    is_active = models.BooleanField(default=True)  # Django's "is this account allowed to log in at all" flag; cancel flips this off
     is_staff = models.BooleanField(default=False)  # can this account access the Django /admin/ site
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -210,6 +250,18 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
         # and anywhere Python tries to print a BusinessAccount object.
         return self.business_name
 
+    def trial_days_left(self):
+        # Based on the actual date, not subscription_status — nothing
+        # currently flips trialing to active on its own (there's no
+        # billing event to trigger that yet), so the status field alone
+        # can't be trusted to know whether the trial window has passed.
+        # Rounded up (ceil), so "6 hours left" still reads as "1 day left"
+        # instead of "0 days left" while someone can still clearly use the app.
+        if self.subscription_status == self.STATUS_CANCELED:
+            return 0
+        remaining_seconds = (self.trial_ends_at - timezone.now()).total_seconds()
+        return max(0, math.ceil(remaining_seconds / 86400))
+
     def formatted_address_lines(self):
         # Used anywhere an address gets rendered as plain text (the
         # emailed invoice and marketing e-blast footers — see
@@ -225,3 +277,30 @@ class BusinessAccount(AbstractBaseUser, PermissionsMixin):
         if city_state_zip:
             lines.append(city_state_zip)
         return lines
+
+
+class SupportRequest(TenantScopedModel):
+    """
+    Settings > Feedback & Support. A bug report, feature idea, question, or
+    billing/refund request, sent to the owner's inbox (see
+    accounts/views.py's SupportRequestViewSet) and kept here too so nothing
+    gets lost if an email bounces, and so the business can see their own
+    past requests.
+    """
+
+    CATEGORY_BUG = "bug"
+    CATEGORY_FEATURE = "feature"
+    CATEGORY_QUESTION = "question"
+    CATEGORY_BILLING = "billing"  # covers refund requests and other billing/subscription questions
+    CATEGORY_CHOICES = [
+        (CATEGORY_BUG, "Bug report"),
+        (CATEGORY_FEATURE, "Feature request"),
+        (CATEGORY_QUESTION, "Question"),
+        (CATEGORY_BILLING, "Billing or refund"),
+    ]
+
+    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
+    message = models.TextField()
+
+    class Meta:
+        ordering = ["-created_at"]

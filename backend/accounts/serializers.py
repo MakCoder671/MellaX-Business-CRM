@@ -1,8 +1,9 @@
 from django.contrib.auth import authenticate
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import BusinessAccount
+from .models import BusinessAccount, SupportRequest
 
 # ----------------------------------------------------------------------------
 # "Serializers" in Django REST Framework do two jobs:
@@ -52,18 +53,14 @@ class SignupSerializer(serializers.ModelSerializer):
         # passed validation above.
         validated_data.pop("accept_tos")  # not a real model field, just used it for the check above
         password = validated_data.pop("password")
-        account = BusinessAccount.objects.create_user(
-            password=password, accepted_tos_at=timezone.now(), **validated_data
-        )
 
-        # Per the plan doc: "Every account gets a landing page from day
-        # one." Imported here (not at the top of the file) to avoid the
-        # accounts app needing to know about landingpages at import time —
-        # this way it's only ever loaded right when it's actually needed.
-        from landingpages.models import LandingPage
-
-        LandingPage.objects.create(business_account=account, slug=f"business-{account.pk}")
-
+        # The account and its landing page are saved together, or not at all.
+        # The landing page is made by a signal (see landingpages/signals.py), so
+        # every account gets one from day one, however it was created.
+        with transaction.atomic():
+            account = BusinessAccount.objects.create_user(
+                password=password, accepted_tos_at=timezone.now(), **validated_data
+            )
         return account
 
 
@@ -140,7 +137,47 @@ class BusinessAccountSerializer(serializers.ModelSerializer):
         ]
         # read_only_fields = things that show up in the JSON response but
         # can't be changed by sending them in a PATCH request. Makes sense:
-        # you shouldn't be able to un-verify your own email or change your
-        # own plan tier by editing your profile form (plan changes are a
-        # Fast-Follow feature — self-service billing isn't wired up yet).
+        # you shouldn't be able to un-verify your own email by editing your
+        # profile form. plan_tier is read-only here on purpose too — it's
+        # changed through the dedicated subscription endpoints below
+        # instead (ChangePlanSerializer, CancelSubscriptionView), which
+        # also update subscription_status/canceled_at together with it so
+        # those three fields can never drift out of sync with each other.
         read_only_fields = ["id", "email", "plan_tier", "is_email_verified", "created_at"]
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    """
+    GET /api/accounts/subscription/ — what Settings > Account & Subscription
+    shows: the current plan, trial countdown, and whether they've canceled.
+    """
+
+    trial_days_left = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = BusinessAccount
+        fields = ["plan_tier", "subscription_status", "trial_ends_at", "canceled_at", "trial_days_left"]
+        read_only_fields = fields
+
+
+class ChangePlanSerializer(serializers.Serializer):
+    """POST /api/accounts/subscription/change-plan/ body — just which plan to switch to."""
+
+    # Premium isn't purchasable yet (see signup's own plan choices), so switching to
+    # it isn't offered here either — same two plans everywhere plan_tier is settable.
+    plan_tier = serializers.ChoiceField(choices=[BusinessAccount.PLAN_BASIC, BusinessAccount.PLAN_PLUS])
+
+
+class SupportRequestSerializer(serializers.ModelSerializer):
+    """Settings > Feedback & Support — a bug report, feature idea, question, or billing/refund request."""
+
+    class Meta:
+        model = SupportRequest
+        fields = ["id", "category", "message", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+    def validate_message(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Let us know a little about it before sending.")
+        return value

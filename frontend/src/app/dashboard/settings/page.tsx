@@ -14,9 +14,9 @@ import { SettingsTabs } from "@/components/settings/SettingsTabs";
 // at /dashboard/settings/calendar, and invoicing-related ones at
 // /dashboard/settings/invoicing.
 //
-// (Account & Subscription, Client Management, and Notifications are all
-// listed as Fast-Follow in the plan doc's V1 Launch Scope — deliberately
-// left out of this page for now.)
+// Account & Subscription lives at /dashboard/settings/subscription, and
+// Feedback & Support at /dashboard/settings/support. (Client Management
+// and Notifications are still Fast-Follow per the plan doc — not built yet.)
 // ----------------------------------------------------------------------------
 
 export default function SettingsPage() {
