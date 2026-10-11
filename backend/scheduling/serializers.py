@@ -1,10 +1,9 @@
-from datetime import timedelta
-
 from rest_framework import serializers
 
 from clients.models import Client
 from services.models import Service
 
+from .availability import conflicts
 from .models import Appointment, AppointmentHistory, BusinessHours, Calendar
 
 
@@ -89,25 +88,11 @@ class AppointmentSerializer(serializers.ModelSerializer):
             status = attrs.get("status") or getattr(self.instance, "status", Appointment.STATUS_SCHEDULED)
 
             if start and status != Appointment.STATUS_CANCELLED:
-                end = start + timedelta(minutes=duration)
-                others = Appointment.objects.for_account(account).filter(calendar=calendar).exclude(
-                    status=Appointment.STATUS_CANCELLED
-                )
-                if self.instance is not None:
-                    others = others.exclude(pk=self.instance.pk)  # don't compare an appointment against itself when editing
-
-                # Two time ranges [a_start, a_end) and [b_start, b_end)
-                # overlap exactly when a_start < b_end AND b_start < a_end
-                # — simple enough to check in Python for the handful of
-                # appointments a small business's calendar actually has,
-                # rather than writing a more complex overlap query.
-                for other in others:
-                    other_end = other.datetime + timedelta(minutes=other.duration_minutes)
-                    if start < other_end and other.datetime < end:
-                        raise serializers.ValidationError(
-                            "This time overlaps with an existing appointment. "
-                            "Turn on double booking in Settings > Calendar if you want to allow this."
-                        )
+                if conflicts(account, calendar, start, duration, exclude_pk=getattr(self.instance, "pk", None)):
+                    raise serializers.ValidationError(
+                        "This time overlaps with an existing appointment. "
+                        "Turn on double booking in Settings > Calendar if you want to allow this."
+                    )
 
         return attrs
 

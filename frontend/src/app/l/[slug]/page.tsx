@@ -4,109 +4,103 @@ import { use, useEffect, useState } from "react";
 
 import { apiFetch, ApiError } from "@/lib/api";
 import { formatAddressLines } from "@/lib/address";
+import { applyTheme } from "@/lib/themePresets";
+import { AboutSection } from "@/components/landing/AboutSection";
+import { BookingSection } from "@/components/landing/BookingSection";
+import { ClosingSection } from "@/components/landing/ClosingSection";
+import { GallerySection } from "@/components/landing/GallerySection";
+import { LandingHeader } from "@/components/landing/Header";
+import { Hero } from "@/components/landing/Hero";
+import { type PublicLandingPage, landingPalette, landingStyle } from "@/components/landing/landing";
+import { ServicesSection } from "@/components/landing/ServicesSection";
+import { SocialLinks } from "@/components/landing/social";
+import { ReviewsSection } from "@/components/landing/ReviewsSection";
+import { VisitSection } from "@/components/landing/VisitSection";
 
 // ----------------------------------------------------------------------------
-// This is the ONLY page in the whole frontend that a random stranger
-// (not logged in) is meant to visit — every business's public landing
-// page lives at /l/<their-slug>. It hits the backend's public,
-// unauthenticated endpoint (landingpages/views.py's PublicLandingPageView)
-// — notice `auth: false` below, since there's no logged-in user here at all.
+// The public landing page at /l/<slug>, one page with anchor links, the same
+// structure as the Gatherwell demo: header, hero, about, services, gallery,
+// reviews, booking (Plus only), and visit. Everything the owner set up on their
+// Landing Page section shows up here. The page uses the landing page's own
+// accent color, separate from the dashboard theme.
 // ----------------------------------------------------------------------------
 
-// Matches exactly what the backend's PublicLandingPageSerializer sends
-// back — see landingpages/serializers.py for the Django side of this shape.
-type PublicLandingPage = {
-  slug: string;
-  business_name: string;
-  blurb_text: string;
-  phone: string;
-  email: string;
-  address: string;
-  city: string;
-  state: string;
-  zip_code: string;
-  logo: string | null;
-  photos: { id: number; image: string; display_order: number }[];
-  services: { name: string; description: string; price: string }[];
-  booking_enabled: boolean;
-};
-
-export default function PublicLandingPage({ params }: PageProps<"/l/[slug]">) {
+export default function PublicLandingPagePage({ params }: PageProps<"/l/[slug]">) {
   const { slug } = use(params);
   const [page, setPage] = useState<PublicLandingPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [serviceId, setServiceId] = useState<number | null>(null);
 
   useEffect(() => {
     apiFetch<PublicLandingPage>(`/api/landing-pages/public/${slug}/`, { auth: false })
       .then(setPage)
-      .catch((err) => setError(err instanceof ApiError ? err.message : "Not found."));
+      .catch((err) => setError(err instanceof ApiError ? err.message : "This page isn't available."));
   }, [slug]);
+
+  useEffect(() => {
+    if (!page) return;
+    applyTheme({ theme_accent: page.landing_accent, theme_background: "default" });
+    document.title = page.business_name;
+  }, [page]);
 
   if (error) {
     return (
-      <main className="flex flex-1 items-center justify-center text-sm text-gray-500">
-        {error}
+      <main className="flex min-h-screen flex-1 items-center justify-center px-6 text-center text-gray-600">
+        <p>{error}</p>
       </main>
     );
   }
 
   if (!page) {
     return (
-      <main className="flex flex-1 items-center justify-center text-sm text-gray-500">
+      <main className="flex min-h-screen flex-1 items-center justify-center text-sm text-gray-500">
         Loading…
       </main>
     );
   }
 
-  return (
-    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-16">
-      {page.logo && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={page.logo} alt={`${page.business_name} logo`} className="mb-4 h-16 w-16 rounded-md object-cover" />
-      )}
-      <h1 className="text-3xl font-semibold">{page.business_name}</h1>
-      {page.blurb_text && <p className="mt-3 text-gray-600">{page.blurb_text}</p>}
+  const canBook = page.booking_available;
+  const style = landingStyle(page.landing_font, page.landing_corners, page.landing_cards);
+  const addressLines = formatAddressLines(page);
 
-      {page.photos.length > 0 && (
-        <div className="mt-6 grid grid-cols-3 gap-2">
-          {page.photos.map((photo) => (
-            // A plain <img> instead of Next.js's <Image> component here —
-            // these come straight from the Django backend (a different
-            // origin than the frontend), and Next's <Image> needs extra
-            // config to optimize images from external domains. Not worth
-            // the setup yet for a v1 gallery.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={photo.id} src={photo.image} alt="" className="aspect-square rounded-md object-cover" />
-          ))}
+  // The background, surface, and text colors all come from the owner's choice.
+  // Setting them as CSS variables here lets every section pick them up.
+  return (
+    <div
+      className="min-h-screen flex-1 text-[var(--lp-text)]"
+      style={{ ...landingPalette(page.landing_background), background: "var(--lp-bg)" }}
+    >
+      <LandingHeader page={page} canBook={canBook} />
+
+      <main className={canBook ? "pb-24 md:pb-0" : undefined}>
+        <Hero page={page} canBook={canBook} />
+        <AboutSection page={page} />
+        <ServicesSection page={page} canBook={canBook} onBook={setServiceId} />
+        <GallerySection page={page} />
+        <ReviewsSection page={page} />
+        {canBook && <BookingSection page={page} serviceId={serviceId} onServiceChange={setServiceId} />}
+        <VisitSection page={page} />
+        <ClosingSection page={page} canBook={canBook} />
+      </main>
+
+      <footer className="bg-gray-950 text-sm text-gray-400">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-semibold text-white">{page.business_name}</p>
+            {addressLines.length > 0 && <p className="mt-1">{addressLines.join(", ")}</p>}
+          </div>
+          <SocialLinks links={page.social_links} tone="dark" />
+          <p>© {new Date().getFullYear()} {page.business_name}</p>
+        </div>
+      </footer>
+
+      {canBook && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--lp-line)] bg-[var(--lp-bg)]/95 p-3 backdrop-blur md:hidden">
+          <a href="#book" className={`accent-bg flex w-full justify-center py-3.5 text-base font-semibold shadow-md ${style.button}`}>
+            Book an appointment
+          </a>
         </div>
       )}
-
-      {page.services.length > 0 && (
-        <section className="mt-8">
-          <h2 className="text-lg font-medium">Services</h2>
-          <ul className="mt-3 divide-y divide-gray-200 rounded-md border border-gray-200">
-            {page.services.map((service) => (
-              <li key={service.name} className="flex items-center justify-between p-3 text-sm">
-                <div>
-                  <p className="font-medium">{service.name}</p>
-                  {service.description && (
-                    <p className="text-gray-500">{service.description}</p>
-                  )}
-                </div>
-                <span className="text-gray-700">${service.price}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="mt-8 text-sm text-gray-600">
-        {page.phone && <p>{page.phone}</p>}
-        {page.email && <p>{page.email}</p>}
-        {formatAddressLines(page).map((line) => (
-          <p key={line}>{line}</p>
-        ))}
-      </section>
-    </main>
+    </div>
   );
 }

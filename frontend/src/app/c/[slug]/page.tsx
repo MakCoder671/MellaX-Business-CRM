@@ -14,7 +14,7 @@ import { Button, Card, ErrorText, Field } from "@/components/form";
 // below is what turns a visitor into a Lead.
 // ----------------------------------------------------------------------------
 
-type PublicCampaign = { name: string; business_name: string };
+type PublicCampaign = { name: string; business_name: string; template_image: string | null };
 
 export default function PublicCampaignPage({ params }: PageProps<"/c/[slug]">) {
   const { slug } = use(params);
@@ -80,6 +80,10 @@ export default function PublicCampaignPage({ params }: PageProps<"/c/[slug]">) {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
       <h1 className="text-2xl font-semibold">{campaign.business_name}</h1>
       <p className="mt-1 text-sm text-gray-600">{campaign.name}</p>
+      {campaign.template_image && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={campaign.template_image} alt={campaign.name} className="mt-6 w-full rounded-xl" />
+      )}
 
       <Card className="mt-6 p-6">
         {submitted ? (
