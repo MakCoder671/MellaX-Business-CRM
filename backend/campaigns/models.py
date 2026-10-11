@@ -30,6 +30,10 @@ class Campaign(TenantScopedModel):
     share_link_slug = models.SlugField(unique=True)  # e.g. "spring-sale-2026" — the public URL is /c/<this>/
     click_count = models.PositiveIntegerField(default=0)  # visits to the plain shareable link
     qr_scan_count = models.PositiveIntegerField(default=0)  # visits that came in through the QR code specifically
+    # An optional Canva design (see marketing templates) shown on the public page the visitor lands on.
+    template = models.ForeignKey(
+        "marketing.MarketingTemplate", null=True, blank=True, on_delete=models.SET_NULL, related_name="campaigns"
+    )
     qr_code_image = models.ImageField(upload_to="campaign_qr_codes/", blank=True)  # generated automatically the first time this campaign is saved, see save() below
 
     class Meta:

@@ -56,6 +56,14 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
   const [name, setName] = useState("");
   const [cost, setCost] = useState("");
   const [details, setDetails] = useState("");
+  const [designs, setDesigns] = useState<{ id: number; name: string }[]>([]);
+  const [designId, setDesignId] = useState<number | "">("");
+
+  useEffect(() => {
+    apiFetch<{ id: number; name: string }[]>("/api/marketing/templates/")
+      .then(setDesigns)
+      .catch(() => setDesigns([]));
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,7 +74,7 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
     try {
       await apiFetch("/api/campaigns/campaigns/", {
         method: "POST",
-        body: { name, cost: cost || "0", details },
+        body: { name, cost: cost || "0", details, template: designId === "" ? null : designId },
       });
       onDone();
     } catch (err) {
@@ -81,6 +89,24 @@ function CreateCampaignForm({ onDone }: { onDone: () => void }) {
       <h2 className="text-base font-semibold text-gray-900">New campaign</h2>
       <form onSubmit={handleSubmit} className="mt-4 space-y-3">
         <Field label="Campaign name" required value={name} onChange={(e) => setName(e.target.value)} />
+        <label className="block text-sm font-medium text-gray-700">
+          Design the visitor sees (optional)
+          <select
+            value={designId}
+            onChange={(e) => setDesignId(e.target.value === "" ? "" : Number(e.target.value))}
+            className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">No design</option>
+            {designs.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs font-normal text-gray-500">
+            Upload designs from Canva on the Templates tab. The one you pick shows on the campaign&apos;s page.
+          </span>
+        </label>
         <Field
           label="Cost spent (optional)"
           type="number"

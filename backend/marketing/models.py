@@ -19,6 +19,25 @@ from common.models import TenantScopedModel
 # ----------------------------------------------------------------------------
 
 
+class MarketingTemplate(TenantScopedModel):
+    """
+    A design the owner made in Canva and uploaded here as an image. E-Blasts and
+    Campaigns can use it. The Canva link is kept so the owner can open and edit
+    the design again later.
+    """
+
+    name = models.CharField(max_length=100)
+    image = models.ImageField(upload_to="marketing_templates/")
+    canva_link = models.URLField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.name
+
+
 class EBlast(TenantScopedModel):
     subject = models.CharField(max_length=255)
     body = models.TextField()
@@ -39,6 +58,11 @@ class EBlast(TenantScopedModel):
     # always answer "how many people got THIS email," not "how many
     # clients do I have right now."
     recipient_count = models.PositiveIntegerField(default=0)
+
+    # An optional Canva design (uploaded as a template) shown at the top of the email.
+    template = models.ForeignKey(
+        MarketingTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="eblasts"
+    )
 
     class Meta:
         ordering = ["-created_at"]  # newest first, so the list page shows recent activity up top without the frontend needing to sort it

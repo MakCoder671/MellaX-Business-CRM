@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/dashboard/marketing", label: "E-blasts" },
   { href: "/dashboard/marketing/campaigns", label: "Campaigns" },
+  { href: "/dashboard/marketing/templates", label: "Templates" },
 ];
 
 export function MarketingTabs() {

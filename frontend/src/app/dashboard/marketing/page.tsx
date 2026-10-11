@@ -35,6 +35,15 @@ type EBlast = {
 
 function ComposeForm({ onDone }: { onDone: () => void }) {
   const [templateKey, setTemplateKey] = useState(EBLAST_TEMPLATES[0].key);
+  // Your own designs (uploaded from Canva). Optional, shown at the top of the email.
+  const [designs, setDesigns] = useState<{ id: number; name: string; image_url: string | null }[]>([]);
+  const [designId, setDesignId] = useState<number | "">("");
+
+  useEffect(() => {
+    apiFetch<{ id: number; name: string; image_url: string | null }[]>("/api/marketing/templates/")
+      .then(setDesigns)
+      .catch(() => setDesigns([]));
+  }, []);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +74,7 @@ function ComposeForm({ onDone }: { onDone: () => void }) {
     try {
       const eblast = await apiFetch<EBlast>("/api/marketing/eblasts/", {
         method: "POST",
-        body: { subject, body, template_key: templateKey },
+        body: { subject, body, template_key: templateKey, template: designId === "" ? null : designId },
       });
       if (send) {
         await apiFetch(`/api/marketing/eblasts/${eblast.id}/send/`, { method: "POST" });
@@ -101,6 +110,27 @@ function ComposeForm({ onDone }: { onDone: () => void }) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700">
+          Design at the top (optional)
+          <select
+            value={designId}
+            onChange={(e) => setDesignId(e.target.value === "" ? "" : Number(e.target.value))}
+            className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+          >
+            <option value="">No design</option>
+            {designs.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="mt-1 text-xs text-gray-500">
+          Make designs in Canva and upload them on the Templates tab. The one you pick appears at the top of the email.
+        </p>
       </div>
 
       <div className="mt-4 space-y-3">

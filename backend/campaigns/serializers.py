@@ -1,6 +1,8 @@
 from django.conf import settings
 from rest_framework import serializers
 
+from marketing.models import MarketingTemplate
+
 from .models import Campaign, Lead
 
 # ----------------------------------------------------------------------------
@@ -16,6 +18,23 @@ class CampaignSerializer(serializers.ModelSerializer):
     conversion_rate = serializers.SerializerMethodField()
     lead_count = serializers.IntegerField(source="leads.count", read_only=True)
     share_link = serializers.SerializerMethodField()
+    template = serializers.PrimaryKeyRelatedField(queryset=MarketingTemplate.objects.all(), allow_null=True, required=False)
+    template_image = serializers.SerializerMethodField()
+
+    def get_template_image(self, campaign):
+        if not campaign.template_id:
+            return None
+        from marketing.serializers import absolute_url
+
+        return absolute_url(self.context.get("request"), campaign.template.image)
+
+    def validate_template(self, template):
+        if template is None:
+            return template
+        account = self.context["request"].user
+        if not MarketingTemplate.objects.for_account(account).filter(pk=template.pk).exists():
+            raise serializers.ValidationError("That template isn't on your account.")
+        return template
 
     class Meta:
         model = Campaign
@@ -29,6 +48,8 @@ class CampaignSerializer(serializers.ModelSerializer):
             "click_count",
             "qr_scan_count",
             "qr_code_image",
+            "template",
+            "template_image",
             "lead_count",
             "conversion_rate",
             "created_at",
@@ -78,10 +99,18 @@ class PublicCampaignSerializer(serializers.ModelSerializer):
     performance numbers or cost."""
 
     business_name = serializers.CharField(source="business_account.business_name")
+    template_image = serializers.SerializerMethodField()
+
+    def get_template_image(self, campaign):
+        if not campaign.template_id:
+            return None
+        from marketing.serializers import absolute_url
+
+        return absolute_url(self.context.get("request"), campaign.template.image)
 
     class Meta:
         model = Campaign
-        fields = ["name", "business_name"]
+        fields = ["name", "business_name", "template_image"]
 
 
 class PublicLeadCreateSerializer(serializers.ModelSerializer):
