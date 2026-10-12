@@ -15,7 +15,7 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py ensure_superuser"
     startCommand: "gunicorn mellax.wsgi:application"
     envVars:
       - key: SECRET_KEY
@@ -50,6 +50,15 @@ services:
         sync: false # e.g. "MellaX <hello@yourdomain.com>" once your domain is verified in Resend
       - key: INTEGRATION_ENCRYPTION_KEY
         generateValue: true
+      # Lets you into /admin/ without needing Shell access (not on every Render
+      # plan). Set these three once in the dashboard, then redeploy - safe to
+      # run on every future deploy too (see accounts/management/commands/ensure_superuser.py).
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_BUSINESS_NAME
+        sync: false
 
 databases:
   - name: mellax-db
