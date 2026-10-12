@@ -66,6 +66,44 @@ class AuthFlowTests(TestCase):
         self.assertEqual(response.data["business_name"], account.business_name)
 
 
+class InviteCodeTests(TestCase):
+    # The private-demo gate (SIGNUP_INVITE_CODE) - off by default (see
+    # AuthFlowTests above, which signs up with no code at all and still
+    # works), on only when that setting is explicitly set.
+    def setUp(self):
+        self.client = APIClient()
+        self.payload = {
+            "email": "invited@example.com",
+            "business_name": "Invited Co.",
+            "password": "securepass123",
+            "accept_tos": True,
+            "plan_tier": BusinessAccount.PLAN_BASIC,
+        }
+
+    @override_settings(SIGNUP_INVITE_CODE="letmein")
+    def test_signup_is_refused_without_the_right_code(self):
+        response = self.client.post(reverse("signup"), self.payload, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(BusinessAccount.objects.filter(email="invited@example.com").exists())
+
+    @override_settings(SIGNUP_INVITE_CODE="letmein")
+    def test_signup_is_refused_with_the_wrong_code(self):
+        response = self.client.post(reverse("signup"), {**self.payload, "invite_code": "nope"}, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("invite code isn't right", str(response.json()))
+
+    @override_settings(SIGNUP_INVITE_CODE="letmein")
+    def test_signup_succeeds_with_the_right_code(self):
+        response = self.client.post(reverse("signup"), {**self.payload, "invite_code": "letmein"}, format="json")
+        self.assertEqual(response.status_code, 201, response.content)
+        self.assertTrue(BusinessAccount.objects.filter(email="invited@example.com").exists())
+
+    def test_no_code_required_when_none_is_configured(self):
+        # SIGNUP_INVITE_CODE defaults to "" (not set here) - same as public signup today.
+        response = self.client.post(reverse("signup"), self.payload, format="json")
+        self.assertEqual(response.status_code, 201, response.content)
+
+
 class SubscriptionTests(TestCase):
     def setUp(self):
         self.account = BusinessAccount.objects.create_user(

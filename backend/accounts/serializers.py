@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
@@ -32,10 +33,18 @@ class SignupSerializer(serializers.ModelSerializer):
     # redeclare it here as its own required field, and only allow the two
     # plans someone can actually sign up for (Premium isn't purchasable yet).
     plan_tier = serializers.ChoiceField(choices=[BusinessAccount.PLAN_BASIC, BusinessAccount.PLAN_PLUS])
+    # Not a real model field - only exists to be checked against
+    # settings.SIGNUP_INVITE_CODE below, then thrown away. default="" (not
+    # just required=False) matters here: without a default, DRF skips
+    # validate_invite_code() entirely when the field is left out of the
+    # request body, which would let someone bypass the gate just by never
+    # sending it. With a default, it's always present - as "" if omitted -
+    # so the check below always actually runs.
+    invite_code = serializers.CharField(write_only=True, required=False, allow_blank=True, default="")
 
     class Meta:
         model = BusinessAccount
-        fields = ["email", "business_name", "password", "accept_tos", "plan_tier"]
+        fields = ["email", "business_name", "password", "accept_tos", "plan_tier", "invite_code"]
 
     def validate_accept_tos(self, value):
         # DRF automatically calls any method named `validate_<fieldname>`
@@ -47,11 +56,25 @@ class SignupSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_invite_code(self, value):
+        # MellaX is in a private-demo phase right now (see
+        # settings.SIGNUP_INVITE_CODE) - while that's set, signup is closed
+        # to anyone who doesn't have the code Mako is personally handing
+        # out. The moment that env var is empty again (the default), this
+        # check is skipped entirely and signup is open to everyone, same as
+        # before this existed.
+        if settings.SIGNUP_INVITE_CODE and value.strip() != settings.SIGNUP_INVITE_CODE:
+            raise serializers.ValidationError(
+                "That invite code isn't right. MellaX is in a private demo right now - ask for an invite link."
+            )
+        return value
+
     def create(self, validated_data):
         # Called automatically when you do `serializer.save()` on a valid
         # signup. `validated_data` is a plain dict of everything that
         # passed validation above.
         validated_data.pop("accept_tos")  # not a real model field, just used it for the check above
+        validated_data.pop("invite_code", None)  # same - only ever used for the check above
         password = validated_data.pop("password")
 
         # The account and its landing page are saved together, or not at all.

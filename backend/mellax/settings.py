@@ -244,6 +244,13 @@ OWNER_NOTIFY_EMAIL = env("OWNER_NOTIFY_EMAIL", default="")
 # frontend, not this API. See accounts/views.py.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
+# Private-demo gate (see accounts/serializers.py's SignupSerializer). Left
+# empty (the default), signup is wide open to anyone - set this to require
+# whatever code you're handing out to invited businesses, so a stranger who
+# finds the live URL can't just create an account. Deleting this env var
+# later re-opens public signup with no code change needed.
+SIGNUP_INVITE_CODE = env("SIGNUP_INVITE_CODE", default="")
+
 # Integrations (Apple Calendar, Square, and more). The key encrypts the owner's
 # saved third-party passwords. Set it in .env for any real deployment, and keep
 # it safe. In local development it's derived from SECRET_KEY if left empty.

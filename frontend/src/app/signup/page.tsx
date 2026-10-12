@@ -40,6 +40,7 @@ export default function SignupPage() {
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [acceptTos, setAcceptTos] = useState(false);
   const [plan, setPlan] = useState<"basic" | "plus">("basic");
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +61,7 @@ export default function SignupPage() {
           password,
           accept_tos: acceptTos,
           plan_tier: plan,
+          invite_code: inviteCode,
         },
       });
       setDone(true);
@@ -161,6 +163,12 @@ export default function SignupPage() {
             launch.
           </p>
         </div>
+
+        <AuthField
+          label="Invite code (if you have one)"
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value)}
+        />
 
         <label className="flex items-start gap-2 text-sm text-ink/70">
           <input

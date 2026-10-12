@@ -59,6 +59,11 @@ services:
         sync: false
       - key: DJANGO_SUPERUSER_BUSINESS_NAME
         sync: false
+      # Private-demo gate. Set this to whatever code you're handing your
+      # invited businesses - without it, signup is wide open to anyone who
+      # finds the live URL. Delete this var later to re-open public signup.
+      - key: SIGNUP_INVITE_CODE
+        sync: false
 
 databases:
   - name: mellax-db
