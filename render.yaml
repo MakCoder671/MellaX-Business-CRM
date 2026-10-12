@@ -39,18 +39,13 @@ services:
         sync: false # your frontend's real URL - used in emailed links (verification, password reset)
       - key: OWNER_NOTIFY_EMAIL
         sync: false # where cancellations and Feedback & Support submissions get emailed
+      # Resend's HTTP API, not SMTP - some hosts (Render's free plan included)
+      # silently block outbound SMTP, which is what made signup hang/500 the
+      # first time this was wired up. See common/email_backend.py.
       - key: EMAIL_BACKEND
-        value: "django.core.mail.backends.smtp.EmailBackend"
-      - key: EMAIL_HOST
-        value: "smtp.resend.com"
-      - key: EMAIL_PORT
-        value: "587"
-      - key: EMAIL_USE_TLS
-        value: "True"
-      - key: EMAIL_HOST_USER
-        value: "resend"
+        value: "common.email_backend.ResendBackend"
       - key: EMAIL_HOST_PASSWORD
-        sync: false # your Resend API key
+        sync: false # your Resend API key - yes, still this name, so you don't have to re-enter it under a new one
       - key: DEFAULT_FROM_EMAIL
         sync: false # e.g. "MellaX <hello@yourdomain.com>" once your domain is verified in Resend
       - key: INTEGRATION_ENCRYPTION_KEY
