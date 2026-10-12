@@ -16,7 +16,12 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate && python manage.py ensure_superuser"
-    startCommand: "gunicorn mellax.wsgi:application"
+    # Tuned for the free plan's 512MB RAM, not a bigger instance: one worker
+    # process (each extra worker is a full second copy of the app in memory),
+    # a couple of threads for light concurrency instead, and workers recycle
+    # every ~200 requests so any slow memory creep gets reset before it adds
+    # up to another out-of-memory kill.
+    startCommand: "gunicorn mellax.wsgi:application --workers 1 --threads 2 --max-requests 200 --max-requests-jitter 50 --timeout 60"
     envVars:
       - key: SECRET_KEY
         generateValue: true
