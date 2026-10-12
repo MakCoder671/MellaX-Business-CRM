@@ -64,6 +64,14 @@ No Friday launch unless all P0 items are marked Done and verified.
   per-business Stripe keys built for client payments) is still a
   from-scratch build: provider decision, webhook handling, failed-payment
   and proration behavior, all still ahead.
+- **Spec, confirmed 2026-10-11 (not built yet):** when this moves from
+  private demo to actually public, "Get started free" should collect a
+  card up front and start a **7-day free trial** billed through Mako's
+  own MellaX-side Stripe account (separate from the per-business Stripe
+  keys businesses connect for their own client payments). This replaces
+  today's free/manual plan_tier switching and the 5-day no-card demo
+  window - those stay as-is for the current private-demo phase, this is
+  the next phase after it.
 
 ### 4) Email verification and password reset deliverability not production-proven
 - Risk: Auth depends on email flows; dev console email backend is not real delivery.
