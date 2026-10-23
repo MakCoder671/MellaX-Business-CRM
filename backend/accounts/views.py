@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage, send_mail
@@ -22,6 +24,8 @@ from .serializers import (
     SupportRequestSerializer,
 )
 from .tokens import email_verification_token
+
+logger = logging.getLogger(__name__)
 
 # ----------------------------------------------------------------------------
 # This file is the whole auth flow: signup, verify email, login, logout,
@@ -99,7 +103,19 @@ class SignupView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)  # 400 error automatically if anything's invalid
         account = serializer.save()
-        _send_verification_email(account, request)
+        try:
+            _send_verification_email(account, request)
+        except Exception:
+            # Without the email there's no way to verify (and so no way to
+            # ever log in), and the address would then be stuck as "already
+            # taken". So undo the signup, log the real reason (e.g. Resend's
+            # own error text) to the server logs, and tell them plainly.
+            logger.exception("Signup verification email failed for %s", account.email)
+            account.delete()
+            return Response(
+                {"detail": "We couldn't send your verification email, so your account wasn't created. Please try again in a few minutes."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         return Response(
             {"detail": "Account created. Check your email to verify your account."},
             status=status.HTTP_201_CREATED,

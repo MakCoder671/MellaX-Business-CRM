@@ -257,3 +257,16 @@ SIGNUP_INVITE_CODE = env("SIGNUP_INVITE_CODE", default="")
 INTEGRATION_ENCRYPTION_KEY = env("INTEGRATION_ENCRYPTION_KEY", default="")
 # Apple's calendar server. Only change this to point at a local test server.
 APPLE_CALDAV_URL = env("APPLE_CALDAV_URL", default="https://caldav.icloud.com/")
+
+# Print errors (with full tracebacks) to the console, which is what Render's
+# Logs tab shows. Without this, Django with DEBUG=False only emails 500
+# errors to ADMINS, so a crash shows up in the logs as a bare "500" line.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "WARNING", "propagate": False},
+    },
+}
