@@ -79,6 +79,10 @@ class ResendBackend(BaseEmailBackend):
             headers={
                 "Authorization": f"Bearer {settings.EMAIL_HOST_PASSWORD}",
                 "Content-Type": "application/json",
+                # Resend's API sits behind Cloudflare, which blocks Python's
+                # default "Python-urllib/x.y" User-Agent outright (403,
+                # "error code: 1010"). Any real, named User-Agent gets through.
+                "User-Agent": "MellaX/1.0 (+https://mellax-business-crm-ri.vercel.app)",
             },
         )
         try:
