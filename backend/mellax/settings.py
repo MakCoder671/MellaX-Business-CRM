@@ -9,6 +9,7 @@ See business_plan.MD (Data Structure, Account Creation & Security) for
 the domain/security rules a lot of this configuration exists to enforce.
 """
 
+import sys
 from pathlib import Path
 
 import environ
@@ -38,8 +39,16 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 # plain http dev server could never actually set. The moment a real
 # deployment sets DEBUG=False, these all switch on automatically.
 # ----------------------------------------------------------------------------
+# `manage.py runserver` only speaks plain http, so redirecting it to https
+# can never work - every API call (including login) would 301 to an https
+# URL nothing is listening on, and the browser reports it as a CORS/network
+# failure. That's what happens if you run the backend locally without a
+# backend/.env (DEBUG then defaults to False). Production runs gunicorn, never
+# runserver, so it still gets the redirect.
+RUNNING_DEVSERVER = len(sys.argv) > 1 and sys.argv[1] == "runserver"
+
 if not DEBUG:
-    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=not RUNNING_DEVSERVER)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # Most hosts (Render, Railway, Heroku-style platforms) terminate HTTPS at a
@@ -207,8 +216,10 @@ REST_FRAMEWORK = {
 # Which frontend origins are allowed to call this API from a browser.
 # Without this, the browser's own security (CORS) would block Next.js
 # running on localhost:3000 from talking to Django on localhost:8001.
+# Both spellings of the dev origin are allowed - to the browser,
+# http://localhost:3000 and http://127.0.0.1:3000 are different origins.
 CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000"]
+    "CORS_ALLOWED_ORIGINS", default=["http://localhost:3000", "http://127.0.0.1:3000"]
 )
 
 # In development this just prints emails to the terminal instead of

@@ -38,8 +38,8 @@ function extractMessage(body: unknown): string {
 }
 
 // A custom Error subclass so calling code can do
-// `err instanceof ApiError` to tell "the API responded with an error" apart
-// from other kinds of failures (like a network being down entirely).
+// `err instanceof ApiError` and show `err.message` straight to the user.
+// status is 0 when the backend couldn't be reached at all (see apiFetch).
 export class ApiError extends Error {
   status: number; // the HTTP status code, e.g. 400, 404, 500
   body: unknown; // the raw error response, in case something needs more detail than just the message
@@ -106,11 +106,26 @@ export async function apiFetch<T>(
   const isFormData = body instanceof FormData;
   if (!isFormData) headers["Content-Type"] = "application/json";
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: isFormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    // fetch() only rejects when no HTTP response came back at all: the
+    // backend isn't running, NEXT_PUBLIC_API_URL points at the wrong place,
+    // or the browser blocked the response (CORS). Turned into an ApiError
+    // (status 0) so pages show this instead of a vague "Something went
+    // wrong." In development the message also says where it looked.
+    throw new ApiError(0, {
+      detail:
+        process.env.NODE_ENV === "development"
+          ? `Can't reach the MellaX API at ${API_BASE_URL}. Make sure the backend is running and allows this origin (CORS_ALLOWED_ORIGINS).`
+          : "Can't reach MellaX right now. Check your connection and try again.",
+    });
+  }
 
   if (response.status === 204) return undefined as T; // "204 No Content" means success with nothing to return (e.g. DELETE, logout)
 

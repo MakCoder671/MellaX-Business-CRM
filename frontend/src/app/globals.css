@@ -148,3 +148,47 @@
     background: white !important;
   }
 }
+
+/* Auth screens (components/auth/AuthShell.tsx, app/login/page.tsx): the form
+   card rises in on load, and a new error nudges sideways once so it's
+   noticed. Both are skipped for anyone who has asked for less motion. */
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes auth-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.auth-rise {
+  animation: auth-rise 400ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-shake {
+  animation: auth-shake 360ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-rise,
+  .auth-shake {
+    animation: none;
+  }
+}
